@@ -1,0 +1,6 @@
+{
+  "name": "Resume Screening",
+  "description": "AI-powered resume parsing, candidate scoring, and job matching assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
