@@ -135,7 +135,8 @@ export const ResumeUploaderModal: React.FC<ResumeUploaderModalProps> = ({
     name: string,
     resumeText: string,
     fileName?: string,
-    fileData?: { data: string; mimeType: string }
+    fileData?: { data: string; mimeType: string },
+    retryCount = 0
   ): Promise<Candidate> => {
     const res = await fetch('/api/screen-resume', {
       method: 'POST',
@@ -151,6 +152,11 @@ export const ResumeUploaderModal: React.FC<ResumeUploaderModalProps> = ({
 
     if (!res.ok) {
       const err = await res.json();
+      if ((res.status === 429 || err?.isQuotaExceeded) && retryCount < 2) {
+        setProgressText(`Gemini quota limit reached. Retrying automatically in 3 seconds (Attempt ${retryCount + 2}/3)...`);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        return processSingleResume(name, resumeText, fileName, fileData, retryCount + 1);
+      }
       throw new Error(err.error || 'Failed to screen resume');
     }
 

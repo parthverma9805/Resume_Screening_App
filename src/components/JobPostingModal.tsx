@@ -30,6 +30,7 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
   // AI Generator state
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiPromptTitle, setAiPromptTitle] = useState('');
+  const [aiError, setAiError] = useState('');
 
   if (!isOpen) return null;
 
@@ -58,6 +59,7 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
   const handleGenerateAIJob = async () => {
     if (!aiPromptTitle.trim()) return;
     setIsGenerating(true);
+    setAiError('');
     try {
       const res = await fetch('/api/generate-jd', {
         method: 'POST',
@@ -79,9 +81,12 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
         if (data.description) setDescription(data.description);
         if (data.requiredSkills && Array.isArray(data.requiredSkills)) setRequiredSkills(data.requiredSkills);
         if (data.preferredSkills && Array.isArray(data.preferredSkills)) setPreferredSkills(data.preferredSkills);
+      } else {
+        setAiError(data.error || 'Failed to generate job description.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to generate JD:', err);
+      setAiError(err?.message || 'An error occurred while generating job description.');
     } finally {
       setIsGenerating(false);
     }
@@ -164,6 +169,11 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
                 )}
               </button>
             </div>
+            {aiError && (
+              <p className="text-[11px] text-rose-600 font-medium mt-1">
+                {aiError}
+              </p>
+            )}
           </div>
         </div>
 

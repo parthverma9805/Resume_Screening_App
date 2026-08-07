@@ -26,6 +26,64 @@ const getAIClient = () => {
   });
 };
 
+const FALLBACK_MODELS = [
+  'gemini-3.6-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-latest',
+];
+
+/**
+ * Executes a Gemini request with model fallback and rate-limit backoff logic
+ */
+async function callGeminiWithFallback(
+  ai: GoogleGenAI,
+  options: { contents: any; config?: any }
+) {
+  let lastError: any = null;
+
+  for (const model of FALLBACK_MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: options.contents,
+          config: options.config,
+        });
+        return response;
+      } catch (err: any) {
+        lastError = err;
+        const errStr = String(err?.message || err);
+        const isRateLimit =
+          errStr.includes('429') ||
+          errStr.includes('RESOURCE_EXHAUSTED') ||
+          errStr.includes('Quota exceeded');
+
+        console.warn(`Gemini call failed for model "${model}" (attempt ${attempt + 1}):`, errStr);
+
+        if (isRateLimit) {
+          // Calculate wait time or default to 1.5s
+          let waitMs = 1500;
+          const match = errStr.match(/retry in (\d+(\.\d+)?)s/i);
+          if (match && parseFloat(match[1]) <= 3) {
+            waitMs = Math.ceil(parseFloat(match[1]) * 1000);
+          }
+          if (attempt === 0) {
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+            continue;
+          }
+          // Break attempt loop to move to next model
+          break;
+        } else {
+          // Non-rate limit error, move to next model or fail
+          break;
+        }
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -109,8 +167,7 @@ EVALUATION INSTRUCTIONS:
       });
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+    const response = await callGeminiWithFallback(ai, {
       contents: { parts: contentsParts },
       config: {
         responseMimeType: 'application/json',
@@ -251,9 +308,14 @@ EVALUATION INSTRUCTIONS:
     res.json(result);
   } catch (error: any) {
     console.error('Error screening resume:', error);
-    res.status(500).json({
-      error: 'Failed to screen resume',
-      details: error.message || String(error),
+    const errStr = error?.message || String(error);
+    const isRateLimit = errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('Quota exceeded');
+    res.status(isRateLimit ? 429 : 500).json({
+      error: isRateLimit
+        ? 'Gemini API rate limit reached. Please wait a few seconds and try again.'
+        : 'Failed to screen resume',
+      details: errStr,
+      isQuotaExceeded: isRateLimit,
     });
   }
 });
@@ -299,15 +361,22 @@ RECRUITER QUESTION:
 Provide a direct, insightful, and professional answer evaluating the candidate based on their resume and job requirements. Use bullet points where appropriate.
 `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+    const response = await callGeminiWithFallback(ai, {
       contents: prompt,
     });
 
     res.json({ answer: response.text });
   } catch (error: any) {
     console.error('Error in candidate Q&A:', error);
-    res.status(500).json({ error: 'Failed to answer candidate query', details: error.message });
+    const errStr = error?.message || String(error);
+    const isRateLimit = errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('Quota exceeded');
+    res.status(isRateLimit ? 429 : 500).json({
+      error: isRateLimit
+        ? 'Gemini API rate limit reached. Please wait a few seconds and try again.'
+        : 'Failed to answer candidate query',
+      details: errStr,
+      isQuotaExceeded: isRateLimit,
+    });
   }
 });
 
@@ -329,8 +398,7 @@ Generate a comprehensive professional Job Posting for the role of "${title}" in 
 Key Notes / Desired Criteria: ${keyNotes || 'Standard industry standards for this role'}.
 `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+    const response = await callGeminiWithFallback(ai, {
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -374,7 +442,15 @@ Key Notes / Desired Criteria: ${keyNotes || 'Standard industry standards for thi
     res.json(parsedData);
   } catch (error: any) {
     console.error('Error generating job description:', error);
-    res.status(500).json({ error: 'Failed to generate job description', details: error.message });
+    const errStr = error?.message || String(error);
+    const isRateLimit = errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('Quota exceeded');
+    res.status(isRateLimit ? 429 : 500).json({
+      error: isRateLimit
+        ? 'Gemini API rate limit reached. Please wait a few seconds and try again.'
+        : 'Failed to generate job description',
+      details: errStr,
+      isQuotaExceeded: isRateLimit,
+    });
   }
 });
 

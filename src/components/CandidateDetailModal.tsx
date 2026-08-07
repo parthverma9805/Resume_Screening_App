@@ -79,6 +79,9 @@ export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to answer candidate query.');
+      }
       const aiMsg: QAMessage = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
@@ -86,8 +89,16 @@ export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, aiMsg]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error asking candidate QA:', err);
+      const errText = err?.message || 'An error occurred while communicating with Gemini AI.';
+      const aiMsg: QAMessage = {
+        id: `ai-err-${Date.now()}`,
+        sender: 'ai',
+        text: `⚠️ ${errText}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
     } finally {
       setIsAsking(false);
     }
