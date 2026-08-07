@@ -1,5 +1,6 @@
 import React from 'react';
 import { Candidate, CandidateStatus } from '../types';
+import { generateCandidatePdf } from '../utils/pdfGenerator';
 import { 
   User, 
   MapPin, 
@@ -10,7 +11,8 @@ import {
   FileText, 
   Trash2, 
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Download
 } from 'lucide-react';
 
 interface CandidateCardProps {
@@ -109,7 +111,14 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
         </td>
 
         <td className="py-3 px-4 text-right">
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              onClick={() => generateCandidatePdf(candidate)}
+              title="Download Resume PDF"
+              className="p-1 text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/20 rounded transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
             <button
               onClick={() => onSelectCandidate(candidate)}
               className="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 rounded text-xs font-semibold transition-all flex items-center gap-1"
@@ -221,6 +230,14 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
 
         <div className="flex items-center gap-1">
           <button
+            onClick={() => generateCandidatePdf(candidate)}
+            title="Download Resume PDF"
+            className="p-1.5 text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/20 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+
+          <button
             onClick={() => onDeleteCandidate(candidate.id)}
             title="Delete candidate"
             className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
@@ -230,7 +247,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
 
           <button
             onClick={() => onSelectCandidate(candidate)}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-md shadow-indigo-600/20"
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-md shadow-indigo-600/20 ml-1"
           >
             View AI Analysis <ChevronRight className="w-3.5 h-3.5" />
           </button>

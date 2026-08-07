@@ -1,17 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { JobPosting } from '../types';
-import { X, Sparkles, Plus, Trash2, Briefcase, Check, Loader2 } from 'lucide-react';
+import { X, Sparkles, Plus, Trash2, Briefcase, Check, Loader2, Edit3 } from 'lucide-react';
 
 interface JobPostingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveJob: (job: JobPosting) => void;
+  initialJob?: JobPosting | null;
 }
 
 export const JobPostingModal: React.FC<JobPostingModalProps> = ({
   isOpen,
   onClose,
   onSaveJob,
+  initialJob,
 }) => {
   const [title, setTitle] = useState('');
   const [department, setDepartment] = useState('Engineering');
@@ -31,6 +33,37 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiPromptTitle, setAiPromptTitle] = useState('');
   const [aiError, setAiError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialJob) {
+        setTitle(initialJob.title || '');
+        setDepartment(initialJob.department || 'Engineering');
+        setLocation(initialJob.location || 'San Francisco, CA (Hybrid)');
+        setEmploymentType(initialJob.employmentType || 'Full-time');
+        setExperienceLevel(initialJob.experienceLevel || 'Senior');
+        setMinYearsExperience(initialJob.minYearsExperience ?? 3);
+        setEducationRequirement(initialJob.educationRequirement || '');
+        setDescription(initialJob.description || '');
+        setRequiredSkills(initialJob.requiredSkills || []);
+        setPreferredSkills(initialJob.preferredSkills || []);
+        setAiPromptTitle(initialJob.title || '');
+      } else {
+        setTitle('');
+        setDepartment('Engineering');
+        setLocation('San Francisco, CA (Hybrid)');
+        setEmploymentType('Full-time');
+        setExperienceLevel('Senior');
+        setMinYearsExperience(3);
+        setEducationRequirement("Bachelor's degree in Computer Science or related field");
+        setDescription('');
+        setRequiredSkills(['React', 'TypeScript', 'Node.js']);
+        setPreferredSkills(['GraphQL', 'Cloud Architecture']);
+        setAiPromptTitle('');
+      }
+      setAiError('');
+    }
+  }, [isOpen, initialJob]);
 
   if (!isOpen) return null;
 
@@ -96,8 +129,8 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
 
-    const newJob: JobPosting = {
-      id: `job-${Date.now()}`,
+    const savedJob: JobPosting = {
+      id: initialJob ? initialJob.id : `job-${Date.now()}`,
       title: title.trim(),
       department: department.trim() || 'General',
       location: location.trim() || 'Remote',
@@ -108,10 +141,10 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
       description: description.trim(),
       requiredSkills,
       preferredSkills,
-      createdAt: new Date().toISOString(),
+      createdAt: initialJob ? initialJob.createdAt : new Date().toISOString(),
     };
 
-    onSaveJob(newJob);
+    onSaveJob(savedJob);
     onClose();
   };
 
@@ -123,11 +156,15 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-              <Briefcase className="w-5 h-5" />
+              {initialJob ? <Edit3 className="w-5 h-5" /> : <Briefcase className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="text-lg font-extrabold text-slate-900">Create Job Posting</h3>
-              <p className="text-xs text-slate-500 font-medium">Define role criteria for AI resume evaluation</p>
+              <h3 className="text-lg font-extrabold text-slate-900">
+                {initialJob ? 'Edit Job Profile' : 'Create Job Posting'}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                {initialJob ? 'Modify requirements and criteria for this role' : 'Define role criteria for AI resume evaluation'}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-800 p-1.5 rounded-2xl hover:bg-slate-200 transition-colors">

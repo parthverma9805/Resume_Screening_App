@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { JobPosting, Candidate, EvaluationWeights, CandidateStatus } from './types';
 import { INITIAL_JOBS, INITIAL_CANDIDATES } from './data/sampleData';
 
@@ -23,13 +23,48 @@ import {
   MapPin, 
   User, 
   Award, 
-  Info 
+  Info,
+  Trash2,
+  Edit3
 } from 'lucide-react';
 
 export default function App() {
-  const [jobs, setJobs] = useState<JobPosting[]>(INITIAL_JOBS);
-  const [activeJobId, setActiveJobId] = useState<string>('job-1');
-  const [candidates, setCandidates] = useState<Candidate[]>(INITIAL_CANDIDATES);
+  // Load saved job profiles from localStorage
+  const [jobs, setJobs] = useState<JobPosting[]>(() => {
+    try {
+      const saved = localStorage.getItem('ai_screener_jobs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (err) {
+      console.error('Failed to load saved job profiles:', err);
+    }
+    return INITIAL_JOBS;
+  });
+
+  const [activeJobId, setActiveJobId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('ai_screener_active_job_id');
+      if (saved) return saved;
+    } catch (e) {}
+    return jobs[0]?.id || 'job-1';
+  });
+
+  // Load saved candidates from localStorage
+  const [candidates, setCandidates] = useState<Candidate[]>(() => {
+    try {
+      const saved = localStorage.getItem('ai_screener_candidates');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (err) {
+      console.error('Failed to load saved candidates:', err);
+    }
+    return INITIAL_CANDIDATES;
+  });
+
   const [weights, setWeights] = useState<EvaluationWeights>({
     hardSkills: 40,
     softSkills: 20,
@@ -37,8 +72,36 @@ export default function App() {
     education: 10,
   });
 
+  // Save jobs to localStorage whenever jobs state updates
+  useEffect(() => {
+    try {
+      localStorage.setItem('ai_screener_jobs', JSON.stringify(jobs));
+    } catch (err) {
+      console.error('Failed to save jobs to storage:', err);
+    }
+  }, [jobs]);
+
+  // Save activeJobId to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('ai_screener_active_job_id', activeJobId);
+    } catch (err) {
+      console.error('Failed to save activeJobId:', err);
+    }
+  }, [activeJobId]);
+
+  // Save candidates to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('ai_screener_candidates', JSON.stringify(candidates));
+    } catch (err) {
+      console.error('Failed to save candidates:', err);
+    }
+  }, [candidates]);
+
   // UI Modals state
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<JobPosting | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isWeightsModalOpen, setIsWeightsModalOpen] = useState(false);
   const [selectedCandidateDetail, setSelectedCandidateDetail] = useState<Candidate | null>(null);
@@ -120,10 +183,33 @@ export default function App() {
     setCandidates((prev) => [...newCandidates, ...prev]);
   };
 
-  // Save New Job
-  const handleSaveJob = (newJob: JobPosting) => {
-    setJobs((prev) => [newJob, ...prev]);
-    setActiveJobId(newJob.id);
+  // Save / Update Job Profile
+  const handleSaveJob = (jobToSave: JobPosting) => {
+    setJobs((prev) => {
+      const exists = prev.some((j) => j.id === jobToSave.id);
+      if (exists) {
+        return prev.map((j) => (j.id === jobToSave.id ? jobToSave : j));
+      } else {
+        return [jobToSave, ...prev];
+      }
+    });
+    setActiveJobId(jobToSave.id);
+    setEditingJob(null);
+  };
+
+  // Delete Job Profile
+  const handleDeleteJob = (jobId: string) => {
+    if (jobs.length <= 1) {
+      alert('At least one job profile must remain in the system.');
+      return;
+    }
+    if (window.confirm('Are you sure you want to remove this job profile?')) {
+      const remaining = jobs.filter((j) => j.id !== jobId);
+      setJobs(remaining);
+      if (activeJobId === jobId) {
+        setActiveJobId(remaining[0].id);
+      }
+    }
   };
 
   // Update Status
@@ -156,7 +242,10 @@ export default function App() {
           setActiveJobId(id);
           setComparisonIds([]);
         }}
-        onOpenNewJobModal={() => setIsNewJobModalOpen(true)}
+        onOpenNewJobModal={() => {
+          setEditingJob(null);
+          setIsNewJobModalOpen(true);
+        }}
         onOpenUploadModal={() => setIsUploadModalOpen(true)}
         onOpenWeightsModal={() => setIsWeightsModalOpen(true)}
         candidateCount={jobCandidates.length}
@@ -195,6 +284,26 @@ export default function App() {
                 <FileText className="w-3.5 h-3.5 text-indigo-400" />
                 <span>{showJobDetails ? 'Hide Job Details' : 'View Job Criteria'}</span>
                 {showJobDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingJob(activeJob);
+                  setIsNewJobModalOpen(true);
+                }}
+                title="Edit Job Profile"
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline">Edit Role</span>
+              </button>
+
+              <button
+                onClick={() => handleDeleteJob(activeJob.id)}
+                title="Delete Job Profile"
+                className="p-2 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 rounded-xl text-xs font-semibold transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
 
               <button
@@ -337,8 +446,12 @@ export default function App() {
       {/* Modals */}
       <JobPostingModal
         isOpen={isNewJobModalOpen}
-        onClose={() => setIsNewJobModalOpen(false)}
+        onClose={() => {
+          setIsNewJobModalOpen(false);
+          setEditingJob(null);
+        }}
         onSaveJob={handleSaveJob}
+        initialJob={editingJob}
       />
 
       <ResumeUploaderModal

@@ -27,9 +27,12 @@ const getAIClient = () => {
 };
 
 const FALLBACK_MODELS = [
-  'gemini-3.6-flash',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-1.5-flash',
   'gemini-3.1-flash-lite',
   'gemini-flash-latest',
+  'gemini-3.6-flash',
 ];
 
 /**
@@ -42,40 +45,30 @@ async function callGeminiWithFallback(
   let lastError: any = null;
 
   for (const model of FALLBACK_MODELS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: options.contents,
-          config: options.config,
-        });
-        return response;
-      } catch (err: any) {
-        lastError = err;
-        const errStr = String(err?.message || err);
-        const isRateLimit =
-          errStr.includes('429') ||
-          errStr.includes('RESOURCE_EXHAUSTED') ||
-          errStr.includes('Quota exceeded');
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: options.contents,
+        config: options.config,
+      });
+      return response;
+    } catch (err: any) {
+      lastError = err;
+      const errStr = String(err?.message || err);
+      const isRateLimit =
+        errStr.includes('429') ||
+        errStr.includes('RESOURCE_EXHAUSTED') ||
+        errStr.includes('Quota exceeded');
 
-        console.warn(`Gemini call failed for model "${model}" (attempt ${attempt + 1}):`, errStr);
+      console.warn(`Gemini call failed for model "${model}":`, errStr);
 
-        if (isRateLimit) {
-          // Calculate wait time or default to 1.5s
-          let waitMs = 1500;
-          const match = errStr.match(/retry in (\d+(\.\d+)?)s/i);
-          if (match && parseFloat(match[1]) <= 3) {
-            waitMs = Math.ceil(parseFloat(match[1]) * 1000);
-          }
-          if (attempt === 0) {
-            await new Promise((resolve) => setTimeout(resolve, waitMs));
-            continue;
-          }
-          // Break attempt loop to move to next model
-          break;
-        } else {
-          // Non-rate limit error, move to next model or fail
-          break;
+      if (isRateLimit) {
+        // Move immediately to next model in list to avoid hitting same exhausted quota
+        continue;
+      } else {
+        // If it's a structural error (invalid format), don't keep trying all models
+        if (errStr.includes('INVALID_ARGUMENT') || errStr.includes('400')) {
+          throw err;
         }
       }
     }
