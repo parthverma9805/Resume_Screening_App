@@ -38,45 +38,45 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
   const score = result?.overallScore ?? 0;
 
   const getScoreColor = (val: number) => {
-    if (val >= 85) return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-    if (val >= 70) return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30';
-    if (val >= 55) return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-    return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+    if (val >= 85) return 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold';
+    if (val >= 70) return 'bg-teal-50 text-teal-700 border-teal-300 font-bold';
+    if (val >= 55) return 'bg-amber-50 text-amber-700 border-amber-300 font-bold';
+    return 'bg-rose-50 text-rose-700 border-rose-300 font-bold';
   };
 
   const getRecommendationBadge = (rec: string | undefined) => {
     switch (rec) {
       case 'Strong Hire':
-        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
       case 'Interview':
-        return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40';
+        return 'bg-teal-100 text-teal-800 border-teal-300';
       case 'Potential Match':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        return 'bg-amber-100 text-amber-800 border-amber-300';
       default:
-        return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+        return 'bg-rose-100 text-rose-800 border-rose-300';
     }
   };
 
   if (viewMode === 'table') {
     return (
-      <tr className="hover:bg-slate-800/40 border-b border-slate-800/80 transition-colors text-xs text-slate-200 group">
+      <tr className="hover:bg-slate-50 border-b border-slate-200 transition-colors text-xs text-slate-700 group">
         <td className="py-3 px-4">
           <input
             type="checkbox"
             checked={isSelectedForComparison}
             onChange={() => onToggleSelectComparison(candidate.id)}
-            className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            className="rounded border-slate-300 bg-white text-teal-600 focus:ring-teal-500 cursor-pointer"
           />
         </td>
 
-        <td className="py-3 px-4 font-semibold text-white">
+        <td className="py-3 px-4 font-semibold text-slate-900">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-bold shrink-0">
+            <div className="w-7 h-7 rounded-full bg-[#0d2e3b] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
               {candidate.name.charAt(0)}
             </div>
             <div>
-              <p className="font-bold text-white group-hover:text-indigo-300 transition-colors">{candidate.name}</p>
-              <p className="text-[11px] text-slate-400">{result?.currentRole || candidate.email}</p>
+              <p className="font-bold text-[#0d2e3b] group-hover:text-teal-700 transition-colors">{candidate.name}</p>
+              <p className="text-[11px] text-slate-500">{result?.currentRole || candidate.email}</p>
             </div>
           </div>
         </td>
@@ -93,7 +93,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           </span>
         </td>
 
-        <td className="py-3 px-4 text-slate-300">
+        <td className="py-3 px-4 text-slate-600">
           {result?.yearsOfExperience ?? 0} yrs
         </td>
 
@@ -101,7 +101,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           <select
             value={candidate.status}
             onChange={(e) => onUpdateStatus(candidate.id, e.target.value as CandidateStatus)}
-            className="bg-slate-900 border border-slate-700 rounded text-slate-200 px-2 py-1 text-xs focus:outline-none"
+            className="bg-white border border-slate-200 rounded text-slate-700 px-2 py-1 text-xs focus:outline-none"
           >
             <option value="new">New</option>
             <option value="shortlisted">Shortlisted</option>
@@ -115,20 +115,20 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
             <button
               onClick={() => generateCandidatePdf(candidate)}
               title="Download Resume PDF"
-              className="p-1 text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/20 rounded transition-colors"
+              className="p-1 text-slate-400 hover:text-teal-700 hover:bg-slate-100 rounded transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => onSelectCandidate(candidate)}
-              className="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 rounded text-xs font-semibold transition-all flex items-center gap-1"
+              className="px-2.5 py-1 bg-teal-50 hover:bg-teal-600 text-teal-700 hover:text-white border border-teal-200 rounded text-xs font-semibold transition-all flex items-center gap-1"
             >
               Analysis <ChevronRight className="w-3 h-3" />
             </button>
             <button
               onClick={() => onDeleteCandidate(candidate.id)}
               title="Delete candidate"
-              className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -139,10 +139,10 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
   }
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 rounded-2xl p-5 shadow-xl transition-all duration-200 flex flex-col justify-between group relative overflow-hidden">
+    <div className="bg-white border border-slate-200/90 hover:border-teal-500/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between group relative overflow-hidden">
       
       {/* Top Banner accent */}
-      <div className={`absolute top-0 left-0 right-0 h-1 ${score >= 85 ? 'bg-emerald-500' : score >= 70 ? 'bg-indigo-500' : score >= 55 ? 'bg-amber-500' : 'bg-rose-500'}`} />
+      <div className={`absolute top-0 left-0 right-0 h-1 ${score >= 85 ? 'bg-emerald-500' : score >= 70 ? 'bg-teal-500' : score >= 55 ? 'bg-amber-500' : 'bg-rose-500'}`} />
 
       {/* Card Header */}
       <div>
@@ -152,14 +152,14 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
               type="checkbox"
               checked={isSelectedForComparison}
               onChange={() => onToggleSelectComparison(candidate.id)}
-              className="mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              className="mt-1 rounded border-slate-300 bg-white text-teal-600 focus:ring-teal-500 cursor-pointer"
               title="Select for candidate comparison"
             />
             <div>
-              <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors flex items-center gap-2">
+              <h3 className="text-base font-bold text-[#0d2e3b] group-hover:text-teal-700 transition-colors flex items-center gap-2">
                 {candidate.name}
               </h3>
-              <p className="text-xs text-slate-400 font-medium line-clamp-1">{result?.currentRole || 'Candidate'}</p>
+              <p className="text-xs text-slate-500 font-medium line-clamp-1">{result?.currentRole || 'Candidate'}</p>
             </div>
           </div>
 
@@ -174,32 +174,32 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
         </div>
 
         {/* Executive Summary Snippet */}
-        <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed mb-4 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/80">
+        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
           {result?.executiveSummary || 'Screening complete.'}
         </p>
 
         {/* Candidate Meta Info */}
-        <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 mb-4">
+        <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-4 font-medium">
           <div className="flex items-center gap-1.5 truncate">
-            <Briefcase className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <Briefcase className="w-3.5 h-3.5 text-teal-600 shrink-0" />
             <span className="truncate">{result?.yearsOfExperience ?? 0} yrs experience</span>
           </div>
           <div className="flex items-center gap-1.5 truncate">
-            <MapPin className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <MapPin className="w-3.5 h-3.5 text-teal-600 shrink-0" />
             <span className="truncate">{result?.location || 'Remote'}</span>
           </div>
         </div>
 
         {/* Category Scores Breakdown Progress */}
         {result?.categoryScores && (
-          <div className="space-y-1.5 mb-4 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+          <div className="space-y-1.5 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
             <div className="flex justify-between text-[11px]">
-              <span className="text-slate-400">Hard Skills</span>
-              <span className="text-slate-200 font-semibold">{result.categoryScores.hardSkills}%</span>
+              <span className="text-slate-500 font-medium">Hard Skills</span>
+              <span className="text-slate-800 font-bold">{result.categoryScores.hardSkills}%</span>
             </div>
-            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
               <div
-                className="bg-indigo-500 h-full rounded-full transition-all"
+                className="bg-teal-600 h-full rounded-full transition-all"
                 style={{ width: `${result.categoryScores.hardSkills}%` }}
               />
             </div>
@@ -208,19 +208,19 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
 
         {/* Missing Required Skills Warning (If Any) */}
         {result?.missingRequiredSkills && result.missingRequiredSkills.length > 0 && (
-          <div className="mb-4 flex items-center gap-1.5 text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="truncate">Lacks: {result.missingRequiredSkills.join(', ')}</span>
+          <div className="mb-4 flex items-center gap-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="truncate font-medium">Lacks: {result.missingRequiredSkills.join(', ')}</span>
           </div>
         )}
       </div>
 
       {/* Card Footer Actions */}
-      <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
         <select
           value={candidate.status}
           onChange={(e) => onUpdateStatus(candidate.id, e.target.value as CandidateStatus)}
-          className="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none cursor-pointer"
+          className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-2 py-1.5 focus:outline-none cursor-pointer font-medium"
         >
           <option value="new">Status: New</option>
           <option value="shortlisted">Shortlisted</option>
@@ -232,7 +232,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           <button
             onClick={() => generateCandidatePdf(candidate)}
             title="Download Resume PDF"
-            className="p-1.5 text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/20 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30"
+            className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-slate-100 rounded-lg transition-colors border border-transparent"
           >
             <Download className="w-3.5 h-3.5" />
           </button>
@@ -240,14 +240,14 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           <button
             onClick={() => onDeleteCandidate(candidate.id)}
             title="Delete candidate"
-            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
 
           <button
             onClick={() => onSelectCandidate(candidate)}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-md shadow-indigo-600/20 ml-1"
+            className="px-3 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-sm shadow-teal-700/20 ml-1"
           >
             View AI Analysis <ChevronRight className="w-3.5 h-3.5" />
           </button>

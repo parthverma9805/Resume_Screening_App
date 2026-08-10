@@ -144,13 +144,13 @@ ${res.missingRequiredSkills.map((m) => `- ${m}`).join('\n')}
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pr-8">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-3xl bg-indigo-600 text-white flex items-center justify-center font-extrabold text-2xl shrink-0 shadow-md shadow-indigo-200">
+              <div className="w-14 h-14 rounded-3xl bg-teal-600 text-white flex items-center justify-center font-extrabold text-2xl shrink-0 shadow-md shadow-teal-200">
                 {candidate.name.charAt(0)}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-2xl font-extrabold text-slate-900">{candidate.name}</h2>
-                  <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-full border border-indigo-200">
+                  <span className="text-xs bg-teal-50 text-teal-700 font-bold px-3 py-1 rounded-full border border-teal-200">
                     {res?.recommendation || 'Evaluated'}
                   </span>
                 </div>
@@ -158,15 +158,15 @@ ${res.missingRequiredSkills.map((m) => `- ${m}`).join('\n')}
 
                 <div className="flex items-center gap-4 text-xs text-slate-500 mt-2 flex-wrap font-medium">
                   {res?.email && (
-                    <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-indigo-600" /> {res.email}</span>
+                    <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-teal-600" /> {res.email}</span>
                   )}
                   {res?.phone && (
-                    <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5 text-indigo-600" /> {res.phone}</span>
+                    <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5 text-teal-600" /> {res.phone}</span>
                   )}
                   {res?.location && (
-                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-indigo-600" /> {res.location}</span>
+                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-teal-600" /> {res.location}</span>
                   )}
-                  <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-indigo-600" /> {res?.yearsOfExperience || 0} yrs experience</span>
+                  <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-teal-600" /> {res?.yearsOfExperience || 0} yrs experience</span>
                 </div>
               </div>
             </div>
@@ -174,14 +174,14 @@ ${res.missingRequiredSkills.map((m) => `- ${m}`).join('\n')}
             {/* Score Radial Box & Action Buttons */}
             <div className="flex items-center gap-2 bg-white p-2.5 sm:p-3.5 rounded-2xl border border-slate-200 shadow-sm shrink-0">
               <div className="text-center px-2">
-                <span className="text-3xl font-black text-indigo-600 tracking-tight">{score}%</span>
+                <span className="text-3xl font-black text-teal-600 tracking-tight">{score}%</span>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Overall Match</p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-1.5 border-l border-slate-200 pl-2.5">
                 <button
                   onClick={() => generateCandidatePdf(candidate, activeJob.title)}
-                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition-colors flex items-center gap-1.5"
                   title="Download Resume PDF"
                 >
                   <Download className="w-4 h-4" />
@@ -205,7 +205,7 @@ ${res.missingRequiredSkills.map((m) => `- ${m}`).join('\n')}
           <button
             onClick={() => setActiveTab('overview')}
             className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              activeTab === 'overview' ? 'border-indigo-600 text-indigo-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
+              activeTab === 'overview' ? 'border-teal-600 text-teal-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Sparkles className="w-4 h-4" /> AI Match Overview
@@ -214,7 +214,7 @@ ${res.missingRequiredSkills.map((m) => `- ${m}`).join('\n')}
           <button
             onClick={() => setActiveTab('experience')}
             className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              activeTab === 'experience' ? 'border-indigo-600 text-indigo-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
+              activeTab === 'experience' ? 'border-teal-600 text-teal-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Briefcase className="w-4 h-4" /> Experience & Education
@@ -223,7 +223,7 @@ ${res.missingRequiredSkills.map((m) => `- ${m}`).join('\n')}
           <button
             onClick={() => setActiveTab('resume')}
             className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              activeTab === 'resume' ? 'border-indigo-600 text-indigo-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
+              activeTab === 'resume' ? 'border-teal-600 text-teal-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <FileText className="w-4 h-4" /> Full Resume Text
@@ -232,7 +232,7 @@ ${res.missingRequiredSkills.map((m) => `- ${m}`).join('\n')}
           <button
             onClick={() => setActiveTab('interview')}
             className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              activeTab === 'interview' ? 'border-indigo-600 text-indigo-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
+              activeTab === 'interview' ? 'border-teal-600 text-teal-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <HelpCircle className="w-4 h-4" /> Tailored Interview Questions
@@ -241,7 +241,7 @@ ${res.missingRequiredSkills.map((m) => `- ${m}`).join('\n')}
           <button
             onClick={() => setActiveTab('qa')}
             className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              activeTab === 'qa' ? 'border-indigo-600 text-indigo-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
+              activeTab === 'qa' ? 'border-teal-600 text-teal-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <MessageSquare className="w-4 h-4" /> Ask AI Assistant

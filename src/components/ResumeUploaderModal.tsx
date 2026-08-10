@@ -275,12 +275,12 @@ export const ResumeUploaderModal: React.FC<ResumeUploaderModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+            <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
               <Upload className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-lg font-extrabold text-slate-900">Screen Candidate Resumes</h3>
-              <p className="text-xs text-slate-500 font-medium">Target Role: <span className="text-indigo-600 font-bold">{activeJob.title}</span></p>
+              <p className="text-xs text-slate-500 font-medium">Target Role: <span className="text-teal-600 font-bold">{activeJob.title}</span></p>
             </div>
           </div>
           <button onClick={onClose} disabled={isProcessing} className="text-slate-400 hover:text-slate-800 p-1.5 rounded-2xl hover:bg-slate-200 transition-colors">
@@ -293,7 +293,7 @@ export const ResumeUploaderModal: React.FC<ResumeUploaderModalProps> = ({
           <button
             onClick={() => setTab('upload')}
             className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              tab === 'upload' ? 'border-indigo-600 text-indigo-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
+              tab === 'upload' ? 'border-teal-600 text-teal-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Upload className="w-4 h-4" /> File Upload
@@ -302,7 +302,7 @@ export const ResumeUploaderModal: React.FC<ResumeUploaderModalProps> = ({
           <button
             onClick={() => setTab('paste')}
             className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              tab === 'paste' ? 'border-indigo-600 text-indigo-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
+              tab === 'paste' ? 'border-teal-600 text-teal-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <FileText className="w-4 h-4" /> Paste Resume Text
@@ -311,7 +311,7 @@ export const ResumeUploaderModal: React.FC<ResumeUploaderModalProps> = ({
           <button
             onClick={() => setTab('samples')}
             className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-              tab === 'samples' ? 'border-indigo-600 text-indigo-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
+              tab === 'samples' ? 'border-teal-600 text-teal-600 font-black' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Zap className="w-4 h-4 text-amber-500" /> Demo Sample Candidates

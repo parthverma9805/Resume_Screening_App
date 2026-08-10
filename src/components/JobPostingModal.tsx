@@ -7,6 +7,7 @@ interface JobPostingModalProps {
   onClose: () => void;
   onSaveJob: (job: JobPosting) => void;
   initialJob?: JobPosting | null;
+  onDeleteJob?: (jobId: string) => void;
 }
 
 export const JobPostingModal: React.FC<JobPostingModalProps> = ({
@@ -14,6 +15,7 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
   onClose,
   onSaveJob,
   initialJob,
+  onDeleteJob,
 }) => {
   const [title, setTitle] = useState('');
   const [department, setDepartment] = useState('Engineering');
@@ -405,20 +407,38 @@ export const JobPostingModal: React.FC<JobPostingModalProps> = ({
           </div>
 
           {/* Footer Submit */}
-          <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-200"
-            >
-              <Check className="w-4 h-4" /> Save Job Posting
-            </button>
+          <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+            <div>
+              {initialJob && onDeleteJob && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteJob(initialJob.id);
+                    onClose();
+                  }}
+                  className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-rose-200"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Profile</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-200"
+              >
+                <Check className="w-4 h-4" /> Save Job Posting
+              </button>
+            </div>
           </div>
         </form>
 

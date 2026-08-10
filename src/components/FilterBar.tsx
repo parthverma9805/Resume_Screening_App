@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, ArrowUpDown, LayoutGrid, List, Scale } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, LayoutGrid, List, Scale, Trash2 } from 'lucide-react';
 import { CandidateStatus } from '../types';
 
 interface FilterBarProps {
@@ -15,6 +15,8 @@ interface FilterBarProps {
   onViewModeChange: (mode: 'grid' | 'table') => void;
   selectedComparisonCount: number;
   onOpenComparisonModal: () => void;
+  totalCandidatesCount?: number;
+  onClearCandidates?: () => void;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -30,9 +32,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onViewModeChange,
   selectedComparisonCount,
   onOpenComparisonModal,
+  totalCandidatesCount,
+  onClearCandidates,
 }) => {
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm space-y-3">
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         
         {/* Search Bar */}
@@ -43,7 +47,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Search by candidate name, skill, title, or email..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
           />
         </div>
 
@@ -51,42 +55,42 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <div className="flex items-center gap-2 flex-wrap justify-between lg:justify-end">
           
           {/* Status Dropdown Filter */}
-          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300">
-            <Filter className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 font-medium">
+            <Filter className="w-3.5 h-3.5 text-teal-600" />
             <select
               value={statusFilter}
               onChange={(e) => onStatusFilterChange(e.target.value)}
-              className="bg-transparent text-white focus:outline-none cursor-pointer pr-1"
+              className="bg-transparent text-slate-800 font-medium focus:outline-none cursor-pointer pr-1"
             >
-              <option value="all" className="bg-slate-900">Status: All</option>
-              <option value="new" className="bg-slate-900">Status: New</option>
-              <option value="shortlisted" className="bg-slate-900">Status: Shortlisted</option>
-              <option value="interview" className="bg-slate-900">Status: Interview</option>
-              <option value="rejected" className="bg-slate-900">Status: Rejected</option>
+              <option value="all">Status: All</option>
+              <option value="new">Status: New</option>
+              <option value="shortlisted">Status: Shortlisted</option>
+              <option value="interview">Status: Interview</option>
+              <option value="rejected">Status: Rejected</option>
             </select>
           </div>
 
           {/* Sort By Dropdown */}
-          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300">
-            <ArrowUpDown className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 font-medium">
+            <ArrowUpDown className="w-3.5 h-3.5 text-teal-600" />
             <select
               value={sortBy}
               onChange={(e: any) => onSortByChange(e.target.value)}
-              className="bg-transparent text-white focus:outline-none cursor-pointer pr-1"
+              className="bg-transparent text-slate-800 font-medium focus:outline-none cursor-pointer pr-1"
             >
-              <option value="score_desc" className="bg-slate-900">Highest Score</option>
-              <option value="score_asc" className="bg-slate-900">Lowest Score</option>
-              <option value="exp_desc" className="bg-slate-900">Most Experience</option>
-              <option value="name_asc" className="bg-slate-900">Name (A-Z)</option>
+              <option value="score_desc">Highest Score</option>
+              <option value="score_asc">Lowest Score</option>
+              <option value="exp_desc">Most Experience</option>
+              <option value="name_asc">Name (A-Z)</option>
             </select>
           </div>
 
           {/* View Toggle */}
-          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1 gap-1">
+          <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-1 gap-1">
             <button
               onClick={() => onViewModeChange('grid')}
               className={`p-1.5 rounded-lg transition-colors ${
-                viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'grid' ? 'bg-[#0d2e3b] text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'
               }`}
               title="Grid View"
             >
@@ -95,7 +99,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <button
               onClick={() => onViewModeChange('table')}
               className={`p-1.5 rounded-lg transition-colors ${
-                viewMode === 'table' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'table' ? 'bg-[#0d2e3b] text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'
               }`}
               title="Table View"
             >
@@ -107,9 +111,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {selectedComparisonCount >= 2 && (
             <button
               onClick={onOpenComparisonModal}
-              className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 animate-bounce"
+              className="px-3 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-700/20 flex items-center gap-1.5 animate-bounce"
             >
               <Scale className="w-3.5 h-3.5" /> Compare ({selectedComparisonCount})
+            </button>
+          )}
+
+          {/* Clear Candidates Button */}
+          {onClearCandidates && totalCandidatesCount !== undefined && totalCandidatesCount > 0 && (
+            <button
+              onClick={onClearCandidates}
+              className="px-3 py-1.5 bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5"
+              title="Clear all candidates for this job"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear Candidates ({totalCandidatesCount})</span>
             </button>
           )}
 
@@ -117,15 +133,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* Score Quick Filter Pills */}
-      <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60 overflow-x-auto text-xs font-medium">
+      <div className="flex items-center gap-2 pt-2 border-t border-slate-100 overflow-x-auto text-xs font-medium">
         <span className="text-slate-400 text-[11px] shrink-0 font-semibold uppercase tracking-wider">Score Tier:</span>
         
         <button
           onClick={() => onScoreFilterChange('all')}
           className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 ${
             scoreFilter === 'all'
-              ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40 font-bold'
-              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+              ? 'bg-[#0d2e3b] text-white border-[#0d2e3b] font-bold shadow-sm'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           All Candidates
@@ -135,8 +151,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           onClick={() => onScoreFilterChange('top')}
           className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 ${
             scoreFilter === 'top'
-              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
-              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+              ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-sm'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           Top Match (&gt;85%)
@@ -146,8 +162,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           onClick={() => onScoreFilterChange('good')}
           className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 ${
             scoreFilter === 'good'
-              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 font-bold'
-              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+              ? 'bg-teal-600 text-white border-teal-600 font-bold shadow-sm'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           Good Match (70-84%)
@@ -157,8 +173,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           onClick={() => onScoreFilterChange('low')}
           className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 ${
             scoreFilter === 'low'
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
-              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+              ? 'bg-amber-600 text-white border-amber-600 font-bold shadow-sm'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           Lower Match (&lt;70%)

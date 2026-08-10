@@ -25,7 +25,8 @@ import {
   Award, 
   Info,
   Trash2,
-  Edit3
+  Edit3,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function App() {
@@ -57,12 +58,15 @@ export default function App() {
       const saved = localStorage.getItem('ai_screener_candidates');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          // Filter out pre-given mock candidates if present
+          return parsed.filter((c: Candidate) => !['cand-1', 'cand-2', 'cand-3'].includes(c.id));
+        }
       }
     } catch (err) {
       console.error('Failed to load saved candidates:', err);
     }
-    return INITIAL_CANDIDATES;
+    return [];
   });
 
   const [weights, setWeights] = useState<EvaluationWeights>({
@@ -107,6 +111,17 @@ export default function App() {
   const [selectedCandidateDetail, setSelectedCandidateDetail] = useState<Candidate | null>(null);
   const [comparisonIds, setComparisonIds] = useState<string[]>([]);
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Job Description Expand Toggle
   const [showJobDetails, setShowJobDetails] = useState(false);
@@ -199,17 +214,54 @@ export default function App() {
 
   // Delete Job Profile
   const handleDeleteJob = (jobId: string) => {
-    if (jobs.length <= 1) {
-      alert('At least one job profile must remain in the system.');
-      return;
-    }
-    if (window.confirm('Are you sure you want to remove this job profile?')) {
-      const remaining = jobs.filter((j) => j.id !== jobId);
-      setJobs(remaining);
-      if (activeJobId === jobId) {
-        setActiveJobId(remaining[0].id);
-      }
-    }
+    const targetJob = jobs.find((j) => j.id === jobId);
+    const title = targetJob?.title || 'this job profile';
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Job Profile',
+      message: `Are you sure you want to delete "${title}"? All candidate evaluations for this job will also be removed.`,
+      onConfirm: () => {
+        const remaining = jobs.filter((j) => j.id !== jobId);
+
+        // Clean up candidates for deleted job
+        setCandidates((prev) => prev.filter((c) => c.jobId !== jobId));
+        setComparisonIds((prev) =>
+          prev.filter((id) => {
+            const cand = candidates.find((c) => c.id === id);
+            return cand && cand.jobId !== jobId;
+          })
+        );
+
+        if (remaining.length === 0) {
+          // If all job profiles were deleted, auto-create a clean new job profile template
+          const defaultJob: JobPosting = {
+            id: `job-${Date.now()}`,
+            title: 'Software Engineer',
+            department: 'Engineering',
+            location: 'Remote',
+            employmentType: 'Full-time',
+            experienceLevel: 'Senior',
+            minYearsExperience: 3,
+            educationRequirement: "Bachelor's degree in Computer Science or related field",
+            description: 'Define key responsibilities, requirements, and tech stack for this role.',
+            requiredSkills: ['React', 'TypeScript', 'Node.js'],
+            preferredSkills: ['Cloud Architecture', 'GraphQL'],
+            createdAt: new Date().toISOString(),
+          };
+          setJobs([defaultJob]);
+          setActiveJobId(defaultJob.id);
+        } else {
+          setJobs(remaining);
+          if (activeJobId === jobId) {
+            setActiveJobId(remaining[0].id);
+          }
+        }
+        setEditingJob(null);
+        setIsNewJobModalOpen(false);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
   // Update Status
@@ -225,6 +277,20 @@ export default function App() {
     setComparisonIds((prev) => prev.filter((id) => id !== candidateId));
   };
 
+  // Clear All Candidates for active job
+  const handleClearCandidates = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Clear All Candidates',
+      message: `Are you sure you want to clear all candidates for "${activeJob.title}"?`,
+      onConfirm: () => {
+        setCandidates((prev) => prev.filter((c) => c.jobId !== activeJob.id));
+        setComparisonIds([]);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
   // Selected Comparison Candidates
   const selectedComparisonCandidates = useMemo(
     () => candidates.filter((c) => comparisonIds.includes(c.id)),
@@ -232,7 +298,7 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased flex flex-col selection:bg-teal-500 selection:text-white">
       
       {/* App Header */}
       <Header
@@ -242,6 +308,7 @@ export default function App() {
           setActiveJobId(id);
           setComparisonIds([]);
         }}
+        onDeleteJob={handleDeleteJob}
         onOpenNewJobModal={() => {
           setEditingJob(null);
           setIsNewJobModalOpen(true);
@@ -255,35 +322,35 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
         {/* Active Job Posting Banner */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm relative overflow-hidden">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs bg-indigo-500/20 text-indigo-300 font-semibold px-2.5 py-0.5 rounded-full border border-indigo-500/30">
+                <span className="text-xs bg-teal-50 text-teal-700 font-bold px-2.5 py-0.5 rounded-full border border-teal-200/80">
                   {activeJob.department}
                 </span>
-                <span className="text-xs bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full border border-slate-700">
+                <span className="text-xs bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-full border border-slate-200">
                   {activeJob.employmentType}
                 </span>
-                <span className="text-xs bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-full border border-slate-700">
+                <span className="text-xs bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-full border border-slate-200">
                   Min {activeJob.minYearsExperience} Yrs Experience
                 </span>
               </div>
-              <h2 className="text-xl font-extrabold text-white">{activeJob.title}</h2>
-              <p className="text-xs text-slate-400 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-indigo-400" /> {activeJob.location}
+              <h2 className="text-xl font-extrabold text-[#0d2e3b]">{activeJob.title}</h2>
+              <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                <MapPin className="w-3.5 h-3.5 text-teal-600" /> {activeJob.location}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
               <button
                 onClick={() => setShowJobDetails(!showJobDetails)}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap"
               >
-                <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                <FileText className="w-3.5 h-3.5 text-teal-600 shrink-0" />
                 <span>{showJobDetails ? 'Hide Job Details' : 'View Job Criteria'}</span>
-                {showJobDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                {showJobDetails ? <ChevronUp className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
               </button>
 
               <button
@@ -292,25 +359,26 @@ export default function App() {
                   setIsNewJobModalOpen(true);
                 }}
                 title="Edit Job Profile"
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap"
               >
-                <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+                <Edit3 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
                 <span className="hidden sm:inline">Edit Role</span>
               </button>
 
               <button
                 onClick={() => handleDeleteJob(activeJob.id)}
                 title="Delete Job Profile"
-                className="p-2 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 rounded-xl text-xs font-semibold transition-colors"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 hover:border-rose-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 whitespace-nowrap"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span className="hidden sm:inline">Delete Job</span>
               </button>
 
               <button
                 onClick={() => setIsUploadModalOpen(true)}
-                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-1.5"
+                className="px-3.5 sm:px-4 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-700/20 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap"
               >
-                <Upload className="w-3.5 h-3.5" />
+                <Upload className="w-3.5 h-3.5 shrink-0" />
                 <span>Screen Resumes</span>
               </button>
             </div>
@@ -319,12 +387,12 @@ export default function App() {
 
           {/* Expanded Job Description & Criteria Details */}
           {showJobDetails && (
-            <div className="mt-4 pt-4 border-t border-slate-800 space-y-3 animate-in fade-in duration-150 text-xs">
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-3 animate-in fade-in duration-150 text-xs">
               <div>
-                <span className="font-semibold text-slate-300 block mb-1">Required Skills:</span>
+                <span className="font-semibold text-slate-700 block mb-1">Required Skills:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {activeJob.requiredSkills.map((s) => (
-                    <span key={s} className="bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 px-2.5 py-0.5 rounded-md font-medium">
+                    <span key={s} className="bg-teal-50 text-teal-800 border border-teal-200/80 px-2.5 py-0.5 rounded-md font-medium">
                       {s}
                     </span>
                   ))}
@@ -333,10 +401,10 @@ export default function App() {
 
               {activeJob.preferredSkills.length > 0 && (
                 <div>
-                  <span className="font-semibold text-slate-300 block mb-1">Preferred Skills:</span>
+                  <span className="font-semibold text-slate-700 block mb-1">Preferred Skills:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {activeJob.preferredSkills.map((s) => (
-                      <span key={s} className="bg-slate-800 text-slate-300 border border-slate-700 px-2.5 py-0.5 rounded-md font-medium">
+                      <span key={s} className="bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md font-medium">
                         {s}
                       </span>
                     ))}
@@ -345,8 +413,8 @@ export default function App() {
               )}
 
               <div>
-                <span className="font-semibold text-slate-300 block mb-1">Role Summary:</span>
-                <p className="text-slate-300 leading-relaxed whitespace-pre-line bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                <span className="font-semibold text-slate-700 block mb-1">Role Summary:</span>
+                <p className="text-slate-600 leading-relaxed whitespace-pre-line bg-slate-50 p-3 rounded-xl border border-slate-200/80">
                   {activeJob.description}
                 </p>
               </div>
@@ -371,6 +439,8 @@ export default function App() {
           onViewModeChange={setViewMode}
           selectedComparisonCount={comparisonIds.length}
           onOpenComparisonModal={() => setIsComparisonModalOpen(true)}
+          totalCandidatesCount={jobCandidates.length}
+          onClearCandidates={handleClearCandidates}
         />
 
         {/* Candidates List / Grid */}
@@ -391,10 +461,10 @@ export default function App() {
               ))}
             </div>
           ) : (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto shadow-xl">
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/60 text-xs text-slate-400 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500 uppercase tracking-wider font-semibold">
                     <th className="py-3 px-4 w-10">Select</th>
                     <th className="py-3 px-4">Candidate Name</th>
                     <th className="py-3 px-4">Match Score</th>
@@ -422,19 +492,19 @@ export default function App() {
             </div>
           )
         ) : (
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto">
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-4 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto border border-teal-100">
               <FileText className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">No candidates found</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+              <h3 className="text-base font-bold text-[#0d2e3b]">No candidates found</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
                 Upload candidate resumes or adjust your active search filters to screen profiles against this job description.
               </p>
             </div>
             <button
               onClick={() => setIsUploadModalOpen(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/20"
+              className="px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-700/20"
             >
               Upload or Import Candidates
             </button>
@@ -452,6 +522,7 @@ export default function App() {
         }}
         onSaveJob={handleSaveJob}
         initialJob={editingJob}
+        onDeleteJob={handleDeleteJob}
       />
 
       <ResumeUploaderModal
@@ -481,6 +552,38 @@ export default function App() {
         selectedCandidates={selectedComparisonCandidates}
         activeJob={activeJob}
       />
+
+      {/* Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">{confirmModal.title}</h3>
+                <p className="text-xs text-slate-500">Action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">{confirmModal.message}</p>
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmModal.onConfirm()}
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md shadow-rose-600/20 transition-all cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
