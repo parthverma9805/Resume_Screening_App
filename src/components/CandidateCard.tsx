@@ -94,7 +94,13 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
         </td>
 
         <td className="py-3 px-4 text-slate-600">
-          {result?.yearsOfExperience ?? 0} yrs
+          {(result?.yearsOfExperience ?? 0) === 0 ? (
+            <span className="inline-flex items-center gap-1 font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full text-[11px] border border-teal-200">
+              🎓 Fresher (0 yrs)
+            </span>
+          ) : (
+            `${result?.yearsOfExperience} yrs`
+          )}
         </td>
 
         <td className="py-3 px-4">
@@ -182,7 +188,11 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
         <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-4 font-medium">
           <div className="flex items-center gap-1.5 truncate">
             <Briefcase className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-            <span className="truncate">{result?.yearsOfExperience ?? 0} yrs experience</span>
+            <span className="truncate">
+              {(result?.yearsOfExperience ?? 0) === 0
+                ? '🎓 Fresher (0 yrs)'
+                : `${result?.yearsOfExperience} yr${(result?.yearsOfExperience ?? 0) > 1 ? 's' : ''} exp`}
+            </span>
           </div>
           <div className="flex items-center gap-1.5 truncate">
             <MapPin className="w-3.5 h-3.5 text-teal-600 shrink-0" />

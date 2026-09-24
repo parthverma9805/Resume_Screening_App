@@ -15,74 +15,96 @@ export const StarlightLogo: React.FC<StarlightLogoProps> = ({ className = "w-9 h
       style={size ? { width: size, height: size } : undefined}
     >
       <defs>
-        {/* Dark Teal Navy 'A' Star Gradient */}
+        {/* Rich Dark Teal Navy Gradient for main 'A' Frame */}
         <linearGradient
-          id="starlight-teal"
+          id="starlight-teal-smooth"
           x1="100"
           y1="20"
           x2="100"
           y2="180"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%" stopColor="#2B7B8E" />
-          <stop offset="50%" stopColor="#1B5666" />
-          <stop offset="100%" stopColor="#0D323E" />
+          <stop offset="0%" stopColor="#226B7E" />
+          <stop offset="60%" stopColor="#154B5A" />
+          <stop offset="100%" stopColor="#0B2C37" />
         </linearGradient>
 
-        {/* Vibrant Emerald Lime Green Arch Gradient */}
+        {/* Vibrant Smooth Emerald Lime Green Arch Gradient */}
         <linearGradient
-          id="starlight-green"
+          id="starlight-green-smooth"
           x1="20"
-          y1="120"
+          y1="100"
           x2="180"
-          y2="150"
+          y2="160"
           gradientUnits="userSpaceOnUse"
         >
           <stop offset="0%" stopColor="#4ADE80" />
           <stop offset="50%" stopColor="#22C55E" />
-          <stop offset="100%" stopColor="#10B981" />
+          <stop offset="100%" stopColor="#059669" />
         </linearGradient>
+
+        {/* Subtle glow filter for the green arch */}
+        <filter id="soft-glow" x="-10%" y="-10%" width="120%" height="120%">
+          <feGaussianBlur stdDeviation="1" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
       </defs>
 
-      {/* Unified Dark Teal 'A' Star Frame */}
+      {/* Smooth Dark Teal Navy 'A' Star Upper Structure with organic fluid curves */}
       <path
         fillRule="evenodd"
         clipRule="evenodd"
         d="
-          M 100 24
-          L 122 84
-          L 185 92
-          L 138 108
-          L 158 172
-          L 128 172
-          L 100 120
-          L 72 172
-          L 42 172
-          L 62 108
-          L 15 92
-          L 78 84
+          M 100 25
+          C 103 25, 107 33, 115 55
+          C 122 73, 148 80, 182 86
+          C 187 87, 189 91, 186 95
+          C 178 104, 155 106, 131 106
+          C 125 106, 122 110, 125 116
+          L 152 170
+          C 154 174, 151 178, 146 178
+          L 126 178
+          C 123 178, 120 176, 118 172
+          L 100 128
+          L 82 172
+          C 80 176, 77 178, 74 178
+          L 54 178
+          C 49 178, 46 174, 48 170
+          L 75 116
+          C 78 110, 75 106, 69 106
+          C 45 106, 22 104, 14 95
+          C 11 91, 13 87, 18 86
+          C 52 80, 78 73, 85 55
+          C 93 33, 97 25, 100 25
           Z
-          M 100 52
-          L 114 84
-          L 86 84
+          M 100 58
+          C 103 68, 107 78, 112 86
+          C 112 87, 111 88, 109 88
+          L 91 88
+          C 89 88, 88 87, 88 86
+          C 93 78, 97 68, 100 58
           Z
         "
-        fill="url(#starlight-teal)"
+        fill="url(#starlight-teal-smooth)"
       />
 
-      {/* Single Smooth Sweeping Green Arch Ribbon */}
+      {/* Smooth Fluid Emerald-Lime Green Sweeping Arch Ribbon */}
       <path
         d="
-          M 20 148
-          Q 100 90 180 148
-          Q 100 112 20 148
+          M 22 142
+          C 65 105, 135 105, 178 142
+          C 182 145, 180 151, 175 152
+          C 130 125, 70 125, 25 152
+          C 20 151, 18 145, 22 142
           Z
         "
-        fill="url(#starlight-green)"
+        fill="url(#starlight-green-smooth)"
+        filter="url(#soft-glow)"
       />
     </svg>
   );
 };
+
 
 
 

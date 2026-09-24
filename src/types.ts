@@ -75,7 +75,9 @@ export interface JobPosting {
   title: string;
   department: string;
   location: string;
-  employmentType: 'Full-time' | 'Part-time' | 'Contract' | 'Remote';
+  city?: string;
+  workMode?: 'Remote' | 'Hybrid' | 'On-site';
+  employmentType: 'Full-time' | 'Part-time' | 'Contract' | 'Internship' | 'Remote';
   experienceLevel: 'Entry Level' | 'Mid Level' | 'Senior' | 'Lead' | 'Executive';
   description: string;
   requiredSkills: string[];

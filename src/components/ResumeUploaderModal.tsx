@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { JobPosting, Candidate, EvaluationWeights } from '../types';
 import { X, Upload, FileText, Sparkles, Loader2, File, User, Zap } from 'lucide-react';
+import { extractTextFromFile, fileToBase64 } from '../utils/textExtractor';
 
 interface ResumeUploaderModalProps {
   isOpen: boolean;
@@ -196,34 +197,31 @@ export const ResumeUploaderModal: React.FC<ResumeUploaderModalProps> = ({
           const file = selectedFiles[i];
           setProgressText(`Analyzing resume ${i + 1} of ${selectedFiles.length}: "${file.name}"...`);
 
-          if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
-            const text = await file.text();
-            const cand = await processSingleResume(
-              file.name.replace(/\.[^/.]+$/, ''),
-              text,
-              file.name
-            );
-            newCandidates.push(cand);
-          } else {
-            const arrayBuffer = await file.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = '';
-            for (let b = 0; b < bytes.byteLength; b++) {
-              binary += String.fromCharCode(bytes[b]);
-            }
-            const base64 = btoa(binary);
-
-            const cand = await processSingleResume(
-              file.name.replace(/\.[^/.]+$/, ''),
-              '',
-              file.name,
-              {
-                data: base64,
-                mimeType: file.type || 'application/pdf',
-              }
-            );
-            newCandidates.push(cand);
+          // Extract text using robust in-browser PDF/Doc/Text parser
+          const extractedText = await extractTextFromFile(file);
+          
+          // Also encode base64 for multimodal vision/PDF LLM evaluation
+          let fileBase64 = '';
+          try {
+            fileBase64 = await fileToBase64(file);
+          } catch {
+            // Ignore base64 error if text was extracted
           }
+
+          const fileMime = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain');
+
+          const cand = await processSingleResume(
+            file.name.replace(/\.[^/.]+$/, ''),
+            extractedText,
+            file.name,
+            fileBase64
+              ? {
+                  data: fileBase64,
+                  mimeType: fileMime,
+                }
+              : undefined
+          );
+          newCandidates.push(cand);
         }
       } else if (tab === 'paste') {
         if (!rawText.trim()) {

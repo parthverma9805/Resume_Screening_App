@@ -87,7 +87,7 @@ export const CandidateComparisonModal: React.FC<CandidateComparisonModalProps> =
                 <td className="p-4 font-semibold text-slate-700">Hard Skills Score</td>
                 {selectedCandidates.map((cand) => (
                   <td key={cand.id} className="p-4 text-center border-l border-slate-200 font-bold text-slate-800">
-                    {cand.screeningResult?.categoryScores.hardSkills}%
+                    {cand.screeningResult?.categoryScores?.hardSkills ?? 0}%
                   </td>
                 ))}
               </tr>
@@ -96,7 +96,7 @@ export const CandidateComparisonModal: React.FC<CandidateComparisonModalProps> =
                 <td className="p-4 font-semibold text-slate-700">Experience Score</td>
                 {selectedCandidates.map((cand) => (
                   <td key={cand.id} className="p-4 text-center border-l border-slate-200 font-bold text-slate-800">
-                    {cand.screeningResult?.categoryScores.experience}%
+                    {cand.screeningResult?.categoryScores?.experience ?? 0}%
                   </td>
                 ))}
               </tr>
@@ -108,11 +108,12 @@ export const CandidateComparisonModal: React.FC<CandidateComparisonModalProps> =
                 </td>
               </tr>
 
-              {activeJob.requiredSkills.map((reqSkill) => (
+              {(activeJob?.requiredSkills || []).map((reqSkill) => (
                 <tr key={reqSkill}>
                   <td className="p-4 font-bold text-slate-800">{reqSkill}</td>
                   {selectedCandidates.map((cand) => {
-                    const matchObj = cand.screeningResult?.skillMatches.find((sm) => sm.skill.toLowerCase().includes(reqSkill.toLowerCase()));
+                    const skillsList = cand.screeningResult?.skillMatches || (cand.screeningResult as any)?.skillsMatch || [];
+                    const matchObj = skillsList.find((sm: any) => sm?.skill?.toLowerCase().includes(reqSkill.toLowerCase()));
                     const isMatched = matchObj ? matchObj.matched : false;
                     return (
                       <td key={cand.id} className="p-4 text-center border-l border-slate-200">
@@ -139,7 +140,7 @@ export const CandidateComparisonModal: React.FC<CandidateComparisonModalProps> =
                 {selectedCandidates.map((cand) => (
                   <td key={cand.id} className="p-4 border-l border-slate-200 align-top">
                     <ul className="space-y-1.5 text-[11px] text-slate-700 font-medium list-disc list-inside">
-                      {cand.screeningResult?.keyStrengths.slice(0, 3).map((str, idx) => (
+                      {(cand.screeningResult?.keyStrengths || []).slice(0, 3).map((str, idx) => (
                         <li key={idx} className="line-clamp-2">{str}</li>
                       ))}
                     </ul>
@@ -150,19 +151,22 @@ export const CandidateComparisonModal: React.FC<CandidateComparisonModalProps> =
               {/* Red Flags / Gaps */}
               <tr>
                 <td className="p-4 font-bold text-slate-900">Identified Gaps</td>
-                {selectedCandidates.map((cand) => (
-                  <td key={cand.id} className="p-4 border-l border-slate-200 align-top">
-                    <ul className="space-y-1.5 text-[11px] text-rose-700 font-bold list-disc list-inside">
-                      {cand.screeningResult?.redFlagsOrGaps && cand.screeningResult.redFlagsOrGaps.length > 0 ? (
-                        cand.screeningResult.redFlagsOrGaps.map((flag, idx) => (
-                          <li key={idx} className="line-clamp-2">{flag}</li>
-                        ))
-                      ) : (
-                        <li className="text-slate-400 italic">None</li>
-                      )}
-                    </ul>
-                  </td>
-                ))}
+                {selectedCandidates.map((cand) => {
+                  const gaps = cand.screeningResult?.redFlagsOrGaps || cand.screeningResult?.missingRequiredSkills || [];
+                  return (
+                    <td key={cand.id} className="p-4 border-l border-slate-200 align-top">
+                      <ul className="space-y-1.5 text-[11px] text-rose-700 font-bold list-disc list-inside">
+                        {gaps.length > 0 ? (
+                          gaps.map((flag, idx) => (
+                            <li key={idx} className="line-clamp-2">{flag}</li>
+                          ))
+                        ) : (
+                          <li className="text-slate-400 italic">None</li>
+                        )}
+                      </ul>
+                    </td>
+                  );
+                })}
               </tr>
 
             </tbody>

@@ -26,7 +26,9 @@ import {
   Info,
   Trash2,
   Edit3,
-  AlertTriangle
+  AlertTriangle,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export default function App() {
@@ -51,6 +53,8 @@ export default function App() {
     } catch (e) {}
     return jobs[0]?.id || 'job-1';
   });
+
+  const [copiedJD, setCopiedJD] = useState(false);
 
   // Load saved candidates from localStorage
   const [candidates, setCandidates] = useState<Candidate[]>(() => {
@@ -333,8 +337,13 @@ export default function App() {
                 <span className="text-xs bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-full border border-slate-200">
                   {activeJob.employmentType}
                 </span>
+                {activeJob.workMode && (
+                  <span className="text-xs bg-teal-50 text-teal-800 font-bold px-2.5 py-0.5 rounded-full border border-teal-200">
+                    {activeJob.workMode}
+                  </span>
+                )}
                 <span className="text-xs bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-full border border-slate-200">
-                  Min {activeJob.minYearsExperience} Yrs Experience
+                  {activeJob.minYearsExperience === 0 ? 'Freshers & Final Year Students Welcome (0 yrs)' : `Min ${activeJob.minYearsExperience} Yrs Experience`}
                 </span>
               </div>
               <h2 className="text-xl font-extrabold text-[#0d2e3b]">{activeJob.title}</h2>
@@ -387,34 +396,93 @@ export default function App() {
 
           {/* Expanded Job Description & Criteria Details */}
           {showJobDetails && (
-            <div className="mt-4 pt-4 border-t border-slate-100 space-y-3 animate-in fade-in duration-150 text-xs">
-              <div>
-                <span className="font-semibold text-slate-700 block mb-1">Required Skills:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {activeJob.requiredSkills.map((s) => (
-                    <span key={s} className="bg-teal-50 text-teal-800 border border-teal-200/80 px-2.5 py-0.5 rounded-md font-medium">
-                      {s}
-                    </span>
-                  ))}
-                </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-3.5 animate-in fade-in duration-150 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-xs uppercase tracking-wide">
+                  Active Job Criteria & Specification
+                </span>
+                <button
+                  onClick={() => {
+                    const fullText = `Job Title: ${activeJob.title}
+Department: ${activeJob.department}
+Location: ${activeJob.location}
+Employment Type: ${activeJob.employmentType}
+Experience Level: ${activeJob.experienceLevel} (Min ${activeJob.minYearsExperience} years)
+Education: ${activeJob.educationRequirement || 'Not specified'}
+
+Required Skills:
+${activeJob.requiredSkills.map(s => `- ${s}`).join('\n')}
+
+Preferred Skills:
+${activeJob.preferredSkills.length > 0 ? activeJob.preferredSkills.map(s => `- ${s}`).join('\n') : 'None'}
+
+Job Description:
+${activeJob.description}`;
+
+                    navigator.clipboard.writeText(fullText);
+                    setCopiedJD(true);
+                    setTimeout(() => setCopiedJD(false), 2500);
+                  }}
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
+                >
+                  {copiedJD ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700 font-bold">Copied to Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Copy Full Spec</span>
+                    </>
+                  )}
+                </button>
               </div>
 
-              {activeJob.preferredSkills.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
                 <div>
-                  <span className="font-semibold text-slate-700 block mb-1">Preferred Skills:</span>
+                  <span className="font-bold text-slate-700 block mb-1.5 text-[11px] uppercase">
+                    Required Core Skills ({activeJob.requiredSkills.length})
+                  </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {activeJob.preferredSkills.map((s) => (
-                      <span key={s} className="bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md font-medium">
+                    {activeJob.requiredSkills.map((s) => (
+                      <span key={s} className="bg-teal-50 text-teal-800 border border-teal-200/90 px-2.5 py-0.5 rounded-md font-semibold text-[11.5px] shadow-2xs">
                         {s}
                       </span>
                     ))}
                   </div>
                 </div>
-              )}
+
+                <div>
+                  <span className="font-bold text-slate-700 block mb-1.5 text-[11px] uppercase">
+                    Preferred / Bonus Skills ({activeJob.preferredSkills.length})
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeJob.preferredSkills.length > 0 ? (
+                      activeJob.preferredSkills.map((s) => (
+                        <span key={s} className="bg-white text-slate-700 border border-slate-200 px-2.5 py-0.5 rounded-md font-medium text-[11.5px] shadow-2xs">
+                          {s}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-slate-400 italic">No secondary skills specified</span>
+                    )}
+                  </div>
+                </div>
+
+                {activeJob.educationRequirement && (
+                  <div className="md:col-span-2 pt-1 border-t border-slate-200/60">
+                    <span className="font-bold text-slate-700 inline-block mr-2 text-[11px] uppercase">Education Requirement:</span>
+                    <span className="text-slate-700 font-medium">{activeJob.educationRequirement}</span>
+                  </div>
+                )}
+              </div>
 
               <div>
-                <span className="font-semibold text-slate-700 block mb-1">Role Summary:</span>
-                <p className="text-slate-600 leading-relaxed whitespace-pre-line bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                <span className="font-bold text-slate-700 block mb-1 text-[11px] uppercase">
+                  Job Description & Responsibilities
+                </span>
+                <p className="text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 font-normal text-xs">
                   {activeJob.description}
                 </p>
               </div>
@@ -544,6 +612,10 @@ export default function App() {
         candidate={selectedCandidateDetail}
         activeJob={activeJob}
         onClose={() => setSelectedCandidateDetail(null)}
+        onUpdateCandidate={(updated) => {
+          setCandidates((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+          setSelectedCandidateDetail(updated);
+        }}
       />
 
       <CandidateComparisonModal
