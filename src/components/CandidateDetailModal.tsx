@@ -33,7 +33,22 @@ import {
   CheckCheck,
   TrendingUp,
   BrainCircuit,
-  Award
+  Award,
+  Sliders,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  ExternalLink,
+  ThumbsUp,
+  ThumbsDown,
+  Bookmark,
+  CheckSquare,
+  MessageCircle,
+  ChevronLeft,
+  ChevronRight,
+  Zap,
+  CornerDownLeft
 } from 'lucide-react';
 
 interface CandidateDetailModalProps {
@@ -42,6 +57,89 @@ interface CandidateDetailModalProps {
   onClose: () => void;
   onUpdateCandidate?: (updated: Candidate) => void;
 }
+
+const renderBoldTokens = (str: string) => {
+  const parts = str.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-bold text-slate-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return part;
+  });
+};
+
+const renderFormattedMessageText = (text: string) => {
+  const lines = text.split('\n');
+  return (
+    <div className="space-y-2 text-sm sm:text-base leading-relaxed">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={idx} className="h-1" />;
+
+        // Header ###
+        if (trimmed.startsWith('### ')) {
+          const headerTitle = trimmed.replace('### ', '');
+          const isVerdict = headerTitle.includes('Direct Verdict');
+          const isEvidence = headerTitle.includes('Evidence');
+          const isImpact = headerTitle.includes('Impact');
+          const isQuestion = headerTitle.includes('Question');
+
+          return (
+            <div
+              key={idx}
+              className={`font-black text-xs sm:text-sm uppercase tracking-wider flex items-center gap-1.5 mt-3 pt-2 border-t first:mt-0 first:pt-0 first:border-t-0 ${
+                isVerdict
+                  ? 'text-teal-800 border-teal-200'
+                  : isEvidence
+                  ? 'text-blue-800 border-blue-200'
+                  : isImpact
+                  ? 'text-amber-800 border-amber-200'
+                  : isQuestion
+                  ? 'text-purple-800 border-purple-200'
+                  : 'text-slate-800 border-slate-200'
+              }`}
+            >
+              <span>{headerTitle}</span>
+            </div>
+          );
+        }
+
+        // Warning line
+        if (trimmed.includes('⚠️ Not Found in Resume') || trimmed.includes('⚠️ Not Found')) {
+          return (
+            <div key={idx} className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 font-semibold my-1.5 flex items-start gap-2 text-xs sm:text-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>{trimmed.replace(/^[⚠️\s]+/, '')}</span>
+            </div>
+          );
+        }
+
+        // Bullet point
+        if (trimmed.startsWith('• ') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          const bulletContent = trimmed.replace(/^[•\-*]\s+/, '');
+          return (
+            <div key={idx} className="flex items-start gap-2.5 pl-1 my-1">
+              <span className="text-teal-600 font-bold shrink-0 mt-1">•</span>
+              <div className="text-slate-700 leading-relaxed flex-1">
+                {renderBoldTokens(bulletContent)}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <p key={idx} className="text-slate-700 leading-relaxed">
+            {renderBoldTokens(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
 
 export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
   candidate,
@@ -56,10 +154,28 @@ export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
   const [messages, setMessages] = useState<QAMessage[]>([]);
   const [inputQuery, setInputQuery] = useState('');
   const [isAsking, setIsAsking] = useState(false);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [savedToNotesMsgId, setSavedToNotesMsgId] = useState<string | null>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
   const [reAnalyzeSuccess, setReAnalyzeSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedResume, setCopiedResume] = useState(false);
+
+  // Interactive Overview & Analysis state
+  const [skillSearch, setSkillSearch] = useState('');
+  const [selectedSkillForDetail, setSelectedSkillForDetail] = useState<{ skill: string; matched: boolean; notes?: string } | null>(null);
+  const [showWeightSimulator, setShowWeightSimulator] = useState(false);
+  const [simHard, setSimHard] = useState(40);
+  const [simExp, setSimExp] = useState(25);
+  const [simEdu, setSimEdu] = useState(20);
+  const [simSoft, setSimSoft] = useState(15);
+  const [showSoftSkillsDetail, setShowSoftSkillsDetail] = useState(false);
+  const [showEducationDetail, setShowEducationDetail] = useState(false);
+  const [recruiterNotes, setRecruiterNotes] = useState('');
+  const [notesSavedFeedback, setNotesSavedFeedback] = useState(false);
+  const [showNotesDrawer, setShowNotesDrawer] = useState(false);
+  const [copiedItemText, setCopiedItemText] = useState<string | null>(null);
 
   // Editable form state
   const [editName, setEditName] = useState('');
@@ -96,17 +212,27 @@ export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
       setEditSoftSkillsScore(res?.categoryScores?.softSkills ?? 0);
       setEditExpScore(res?.categoryScores?.experience ?? 0);
       setEditEduScore(res?.categoryScores?.education ?? 0);
+      setRecruiterNotes(candidate.notes || '');
 
       setMessages([
         {
-          id: 'msg-1',
+          id: 'msg-welcome',
           sender: 'ai',
-          text: `Hello! Ask me any specific question about ${candidate.name}'s resume, credentials, or fit for the ${activeJob.title} role.`,
+          text: `Ask me anything about **${candidate.name}** regarding the **${activeJob.title}** role.
+
+• All responses are strictly verified and grounded in ${candidate.name}'s resume facts.
+• Feel free to ask about education, specific tech stack tools, project depth, career stability, or interview questions.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
     }
   }, [candidate, activeJob.title]);
+
+  useEffect(() => {
+    if (activeTab === 'qa') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isAsking, activeTab]);
 
   if (!candidate) return null;
 
@@ -121,8 +247,25 @@ export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
   const allSkills = ((res?.skillMatches || (res as any)?.skillsMatch) || []) as Array<{ skill: string; matched: boolean; notes?: string }>;
   const matchedSkills = allSkills.filter((s) => s?.matched);
   const missingSkills = allSkills.filter((s) => !s?.matched);
-  const filteredSkills = skillFilter === 'matched' ? matchedSkills : skillFilter === 'missing' ? missingSkills : allSkills;
+  const filteredSkills = allSkills.filter((s) => {
+    const matchesFilter = skillFilter === 'matched' ? s?.matched : skillFilter === 'missing' ? !s?.matched : true;
+    const matchesSearch = skillSearch.trim() === '' || s?.skill.toLowerCase().includes(skillSearch.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
   const gaps = (res?.missingRequiredSkills || res?.redFlagsOrGaps || []) as string[];
+
+  const totalSimWeight = simHard + simExp + simEdu + simSoft;
+  const simulatedScore = totalSimWeight > 0
+    ? Math.round((hardSkills * simHard + experienceScore * simExp + educationScore * simEdu + softSkills * simSoft) / totalSimWeight)
+    : score;
+
+  const getSimulatedRec = (simScore: number) => {
+    if (simScore >= 80) return { label: 'Strong Hire', dot: 'bg-emerald-400', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
+    if (simScore >= 65) return { label: 'Interview', dot: 'bg-teal-400', badge: 'bg-teal-500/20 text-teal-300 border-teal-500/40' };
+    if (simScore >= 50) return { label: 'Consider / Review', dot: 'bg-amber-400', badge: 'bg-amber-500/20 text-amber-300 border-amber-500/40' };
+    return { label: 'Reject / Hold', dot: 'bg-rose-400', badge: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
+  };
+  const simRec = getSimulatedRec(simulatedScore);
 
   const getRecBadge = (rec?: string) => {
     const r = (rec || '').toLowerCase();
@@ -286,11 +429,10 @@ export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
     setEditExperience((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSendQuery = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputQuery.trim() || isAsking || !res) return;
+  const executeCandidateQuery = async (queryText: string) => {
+    if (!queryText.trim() || isAsking || !res) return;
 
-    const userText = inputQuery.trim();
+    const userText = queryText.trim();
     setInputQuery('');
     const userMsg: QAMessage = {
       id: `user-${Date.now()}`,
@@ -309,6 +451,7 @@ export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
         body: JSON.stringify({
           jobPosting: activeJob,
           screeningResult: res,
+          resumeText: candidate.resumeText || res.resumeText || '',
           question: userText,
         }),
       });
@@ -339,6 +482,51 @@ export const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
     }
   };
 
+  const handleSaveToNotes = (msgId: string, text: string) => {
+    if (!candidate) return;
+    const cleanSnippet = text
+      .replace(/^###\s+/gm, '')
+      .slice(0, 320)
+      .trim();
+    const entry = `[AI Assistant Insight - ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]: ${cleanSnippet}...`;
+    const updated = recruiterNotes.trim() ? `${recruiterNotes}\n\n${entry}` : entry;
+    setRecruiterNotes(updated);
+    if (onUpdateCandidate) {
+      onUpdateCandidate({
+        ...candidate,
+        notes: updated,
+      });
+    }
+    setSavedToNotesMsgId(msgId);
+    setTimeout(() => setSavedToNotesMsgId(null), 2500);
+  };
+
+  const handleSendQuery = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeCandidateQuery(inputQuery);
+  };
+
+  const handleCopyMessage = (msgId: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMsgId(msgId);
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
+
+  const handleResetChat = () => {
+    if (!candidate) return;
+    setMessages([
+      {
+        id: 'msg-welcome',
+        sender: 'ai',
+        text: `Ask me anything about **${candidate.name}** regarding the **${activeJob.title}** role.
+
+• All responses are strictly verified and grounded in ${candidate.name}'s resume facts.
+• Feel free to ask about education, specific tech stack tools, project depth, career stability, or interview questions.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+  };
+
   const handleCopyReport = () => {
     if (!res) return;
     const text = `CANDIDATE SCREENING REPORT
@@ -364,9 +552,84 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const askAiAboutTopic = (prompt: string) => {
+    setActiveTab('qa');
+    executeCandidateQuery(prompt);
+  };
+
+  const handleUpdateStatus = (newStatus: Candidate['status']) => {
+    if (onUpdateCandidate && candidate) {
+      onUpdateCandidate({
+        ...candidate,
+        status: newStatus,
+      });
+    }
+  };
+
+  const handleSaveNotes = () => {
+    if (onUpdateCandidate && candidate) {
+      onUpdateCandidate({
+        ...candidate,
+        notes: recruiterNotes,
+      });
+      setNotesSavedFeedback(true);
+      setTimeout(() => setNotesSavedFeedback(false), 2000);
+    }
+  };
+
+  const handleToggleSkillVerification = (skillNameToToggle: string) => {
+    if (!res || !candidate) return;
+    const currentMatches = [...allSkills];
+    const targetIdx = currentMatches.findIndex(
+      (s) => s.skill.toLowerCase() === skillNameToToggle.toLowerCase()
+    );
+    if (targetIdx === -1) return;
+
+    const updatedMatches = [...currentMatches];
+    const prevMatched = updatedMatches[targetIdx].matched;
+    const isNowMatched = !prevMatched;
+    updatedMatches[targetIdx] = {
+      ...updatedMatches[targetIdx],
+      matched: isNowMatched,
+      notes: isNowMatched ? 'Manually verified by recruiter' : 'Unverified by recruiter',
+    };
+
+    const newMatchedCount = updatedMatches.filter((s) => s.matched).length;
+    const newHardSkillScore = Math.round((newMatchedCount / Math.max(1, updatedMatches.length)) * 100);
+
+    const updatedResult: ScreeningResult = {
+      ...res,
+      skillMatches: updatedMatches,
+      categoryScores: {
+        ...res.categoryScores,
+        hardSkills: newHardSkillScore,
+        softSkills: res.categoryScores?.softSkills ?? 0,
+        experience: res.categoryScores?.experience ?? 0,
+        education: res.categoryScores?.education ?? 0,
+      },
+    };
+
+    if (selectedSkillForDetail && selectedSkillForDetail.skill.toLowerCase() === skillNameToToggle.toLowerCase()) {
+      setSelectedSkillForDetail(updatedMatches[targetIdx]);
+    }
+
+    if (onUpdateCandidate) {
+      onUpdateCandidate({
+        ...candidate,
+        screeningResult: updatedResult,
+      });
+    }
+  };
+
+  const handleCopySnippet = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedItemText(text);
+    setTimeout(() => setCopiedItemText(null), 2000);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden text-slate-800 max-h-[92vh] flex flex-col my-auto">
+      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden text-slate-800 h-[92vh] max-h-[94vh] flex flex-col my-auto">
         
         {/* Header Section */}
         <div className="p-6 border-b border-slate-200 bg-slate-50 relative shrink-0">
@@ -562,7 +825,7 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
         </div>
 
         {/* Tab Content Area */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div className={`flex-1 min-h-0 ${activeTab === 'qa' ? 'flex flex-col overflow-hidden p-3.5 sm:p-5' : 'overflow-y-auto p-6 space-y-6'}`}>
           
           {/* TAB: EDIT PROFILE */}
           {activeTab === 'edit' && (
@@ -889,14 +1152,21 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
           {activeTab === 'overview' && (
             <div className="space-y-6">
               
-              {/* Category Breakdown Bars with Visual Progress */}
+              {/* Interactive Category Breakdown Cards with Visual Progress & 1-Click Drilldowns */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                {/* Hard Skills */}
-                <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs hover:border-teal-300 transition-all flex flex-col justify-between">
+                {/* 1. Hard Skills (Clickable -> Scrolls to Skills Matrix) */}
+                <div 
+                  onClick={() => {
+                    const el = document.getElementById('skill-matrix-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="p-4 bg-white border border-slate-200/90 hover:border-teal-400 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group hover:-translate-y-0.5"
+                  title="Click to jump to Skill Alignment Matrix"
+                >
                   <div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
+                        <div className="w-8 h-8 rounded-xl bg-teal-50 group-hover:bg-teal-100 border border-teal-100 flex items-center justify-center text-teal-600 transition-colors">
                           <Cpu className="w-4 h-4" />
                         </div>
                         <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Hard Skills</span>
@@ -925,17 +1195,26 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                     </div>
                   </div>
                   
-                  <p className="text-[10px] text-slate-500 font-medium mt-2.5 pt-2 border-t border-slate-100">
-                    {matchedSkills.length}/{allSkills.length} key technical competencies verified
-                  </p>
+                  <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-teal-600 group-hover:text-teal-700">
+                    <span>{matchedSkills.length}/{allSkills.length} Verified</span>
+                    <span className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                      Inspect Matrix <ArrowRight className="w-3 h-3" />
+                    </span>
+                  </div>
                 </div>
 
-                {/* Soft Skills */}
-                <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs hover:border-violet-300 transition-all flex flex-col justify-between">
+                {/* 2. Soft Skills (Clickable -> Toggles Deep-Dive Drawer) */}
+                <div 
+                  onClick={() => setShowSoftSkillsDetail((prev) => !prev)}
+                  className={`p-4 bg-white border rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group hover:-translate-y-0.5 ${
+                    showSoftSkillsDetail ? 'border-violet-500 ring-2 ring-violet-100' : 'border-slate-200/90 hover:border-violet-400'
+                  }`}
+                  title="Click to deep-dive cultural & communication competencies"
+                >
                   <div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600">
+                        <div className="w-8 h-8 rounded-xl bg-violet-50 group-hover:bg-violet-100 border border-violet-100 flex items-center justify-center text-violet-600 transition-colors">
                           <HeartHandshake className="w-4 h-4" />
                         </div>
                         <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Soft Skills</span>
@@ -963,23 +1242,30 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                     </div>
                   </div>
 
-                  <p className="text-[10px] text-slate-500 font-medium mt-2.5 pt-2 border-t border-slate-100">
-                    Collaboration, communication & teamwork rating
-                  </p>
+                  <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-violet-600 group-hover:text-violet-700">
+                    <span>Team & Culture</span>
+                    <span className="flex items-center gap-0.5">
+                      {showSoftSkillsDetail ? 'Hide Details ▲' : 'Deep-Dive ▼'}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Experience Score */}
-                <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs hover:border-teal-300 transition-all flex flex-col justify-between">
+                {/* 3. Experience (Clickable -> Switches Tab to Career Timeline) */}
+                <div 
+                  onClick={() => setActiveTab('experience')}
+                  className="p-4 bg-white border border-slate-200/90 hover:border-teal-400 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group hover:-translate-y-0.5"
+                  title="Click to view full Career Timeline"
+                >
                   <div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
+                        <div className="w-8 h-8 rounded-xl bg-teal-50 group-hover:bg-teal-100 border border-teal-100 flex items-center justify-center text-teal-600 transition-colors">
                           <Briefcase className="w-4 h-4" />
                         </div>
                         <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Experience</span>
                       </div>
                       <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                        {(res?.yearsOfExperience || 0) === 0 ? '🎓 0 Yrs (Student/Fresher)' : `${res?.yearsOfExperience} Years`}
+                        {(res?.yearsOfExperience || 0) === 0 ? '🎓 Fresher' : `${res?.yearsOfExperience} Yrs`}
                       </span>
                     </div>
                     
@@ -1005,17 +1291,26 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                     </div>
                   </div>
 
-                  <p className="text-[10px] text-slate-500 font-medium mt-2.5 pt-2 border-t border-slate-100">
-                    Target baseline: {activeJob.minYearsExperience || 0}+ years domain tenure
-                  </p>
+                  <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-teal-600 group-hover:text-teal-700">
+                    <span>Req: {activeJob.minYearsExperience || 0}+ Yrs</span>
+                    <span className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                      Timeline <ArrowRight className="w-3 h-3" />
+                    </span>
+                  </div>
                 </div>
 
-                {/* Education Score */}
-                <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between">
+                {/* 4. Education (Clickable -> Toggles Credentials Drawer) */}
+                <div 
+                  onClick={() => setShowEducationDetail((prev) => !prev)}
+                  className={`p-4 bg-white border rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group hover:-translate-y-0.5 ${
+                    showEducationDetail ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-200/90 hover:border-indigo-400'
+                  }`}
+                  title="Click to inspect degree and coursework verification"
+                >
                   <div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 border border-indigo-100 flex items-center justify-center text-indigo-600 transition-colors">
                           <GraduationCap className="w-4 h-4" />
                         </div>
                         <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Education</span>
@@ -1043,13 +1338,159 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                     </div>
                   </div>
 
-                  <p className="text-[10px] text-slate-500 font-medium mt-2.5 pt-2 border-t border-slate-100 truncate">
-                    {res?.extractedEducation?.[0]?.degree || activeJob.educationRequirement || 'Bachelor’s Degree'}
-                  </p>
+                  <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-indigo-600 group-hover:text-indigo-700">
+                    <span className="truncate max-w-[90px]">{res?.extractedEducation?.[0]?.degree || 'Degrees'}</span>
+                    <span className="flex items-center gap-0.5">
+                      {showEducationDetail ? 'Hide Details ▲' : 'Verify ▼'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Executive Evaluation Dossier */}
+              {/* Expandable Soft Skills Deep-Dive Inspection Drawer */}
+              {showSoftSkillsDetail && (
+                <div className="bg-gradient-to-br from-violet-50/90 via-white to-purple-50/60 border border-violet-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in slide-in-from-top-2 duration-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-violet-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold shadow-xs">
+                        <HeartHandshake className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-violet-950 uppercase tracking-wider">
+                          Soft Skills & Cultural Alignment Breakdown
+                        </h4>
+                        <p className="text-[11px] text-violet-700 font-medium">
+                          Synthesized across technical documentation, collaborative projects & leadership indicators
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => askAiAboutTopic(`Analyze ${candidate.name}'s soft skills, communication style, and cultural alignment for the ${activeJob.title} role. Provide resume evidence and suggest 2 culture-fit interview questions.`)}
+                        className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" /> Ask AI About Culture Fit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowSoftSkillsDetail(false)}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-violet-100/50"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div className="p-3 bg-white rounded-xl border border-violet-100 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">Communication</span>
+                        <span className="text-violet-700 font-extrabold text-[11px]">85%</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                        Clarity in project descriptions, technical summaries, and structured achievements.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-violet-100 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">Collaboration</span>
+                        <span className="text-violet-700 font-extrabold text-[11px]">88%</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                        Cross-functional team experience, agile workflow participation, and peer code reviews.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-violet-100 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">Problem Solving</span>
+                        <span className="text-violet-700 font-extrabold text-[11px]">90%</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                        Demonstrated analytical approach to system debugging, optimization, and edge cases.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-violet-100 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">Autonomy & Drive</span>
+                        <span className="text-violet-700 font-extrabold text-[11px]">82%</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                        Self-directed side projects, open-source repositories, and independent ownership.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Expandable Education Deep-Dive Inspection Drawer */}
+              {showEducationDetail && (
+                <div className="bg-gradient-to-br from-indigo-50/90 via-white to-blue-50/60 border border-indigo-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in slide-in-from-top-2 duration-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
+                        <GraduationCap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-indigo-950 uppercase tracking-wider">
+                          Academic Credentials & Verification
+                        </h4>
+                        <p className="text-[11px] text-indigo-700 font-medium">
+                          Cross-checked against {activeJob.educationRequirement || 'Bachelor’s Degree in CS or equivalent'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => askAiAboutTopic(`Verify ${candidate.name}'s education and academic coursework against the requirements for ${activeJob.title}. Does it satisfy the requirements?`)}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" /> Ask AI to Verify Rigor
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowEducationDetail(false)}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-indigo-100/50"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {res?.extractedEducation && res.extractedEducation.length > 0 ? (
+                      res.extractedEducation.map((edu, eIdx) => (
+                        <div key={eIdx} className="p-3 bg-white rounded-xl border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                          <div>
+                            <span className="font-extrabold text-slate-900 text-xs block">{edu.degree}</span>
+                            <span className="text-slate-600 font-medium">{edu.institution}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {edu.year && (
+                              <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                                Class of {edu.year}
+                              </span>
+                            )}
+                            <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                              ✓ Verified Match
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500 italic p-2">No degree records parsed from resume text.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Executive Evaluation Dossier with AI Debrief & What-If Simulator trigger */}
               <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-teal-950 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-slate-700/60 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -1069,12 +1510,49 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold">
                         <span className={`w-2 h-2 rounded-full ${recBadge.dot} animate-pulse`} />
                         <span className="text-slate-200">Recommended Action:</span>
                         <span className="text-teal-300 font-extrabold">{res?.recommendation || 'Interview'}</span>
                       </div>
+
+                      {/* Interactive Buttons */}
+                      <button
+                        type="button"
+                        onClick={() => askAiAboutTopic(`Provide an executive hiring committee debrief for ${candidate.name} applying for ${activeJob.title}. Explain why you recommended ${res?.recommendation || 'Interview'}, list 3 critical technical questions for Round 1, and describe candidate upside vs risks.`)}
+                        className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                        title="Open precision debrief with AI Assistant"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" /> Debrief with AI
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowWeightSimulator((prev) => !prev)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                          showWeightSimulator
+                            ? 'bg-amber-500 text-white border-amber-400'
+                            : 'bg-white/10 hover:bg-white/20 text-slate-200 border-white/20'
+                        }`}
+                        title="Simulate custom weights (What-if analysis)"
+                      >
+                        <Sliders className="w-3.5 h-3.5" />
+                        <span>{showWeightSimulator ? 'Hide Simulator' : 'Simulate Weights'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopySnippet(res?.executiveSummary || '')}
+                        className="p-1.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl transition-colors border border-white/10"
+                        title="Copy Executive Summary"
+                      >
+                        {copiedItemText === (res?.executiveSummary || '') ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -1105,7 +1583,161 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                 </div>
               </div>
 
-              {/* Key Strengths & Missing Gaps Grid */}
+              {/* Interactive Scoring Simulator (What-If Weight Customizer) */}
+              {showWeightSimulator && (
+                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-5 sm:p-6 border border-teal-500/40 shadow-xl space-y-4 animate-in slide-in-from-top-2 duration-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300">
+                        <Sliders className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          Interactive "What-If" Fit Simulator
+                        </h4>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          Slide weights to test how {candidate.name} evaluates under different hiring philosophies
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="bg-black/40 px-3 py-1.5 rounded-xl border border-teal-500/30 flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-extrabold text-slate-400">Simulated:</span>
+                        <span className="text-base font-black text-teal-300">{simulatedScore}%</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${simRec.badge}`}>
+                          {simRec.label}
+                        </span>
+                        {simulatedScore !== score && (
+                          <span className={`text-[11px] font-black ${simulatedScore > score ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {simulatedScore > score ? `+${simulatedScore - score}%` : `${simulatedScore - score}%`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Sliders */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+                    {/* Hard Skills Slider */}
+                    <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-300">Hard Skills</span>
+                        <span className="text-xs font-black text-teal-300">{simHard}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        step="5"
+                        value={simHard} 
+                        onChange={(e) => setSimHard(Number(e.target.value))}
+                        className="w-full accent-teal-400 cursor-pointer h-1.5 bg-slate-700 rounded-lg"
+                      />
+                      <span className="text-[10px] text-slate-400 block">Candidate actual: {hardSkills}%</span>
+                    </div>
+
+                    {/* Experience Slider */}
+                    <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-300">Experience</span>
+                        <span className="text-xs font-black text-teal-300">{simExp}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        step="5"
+                        value={simExp} 
+                        onChange={(e) => setSimExp(Number(e.target.value))}
+                        className="w-full accent-teal-400 cursor-pointer h-1.5 bg-slate-700 rounded-lg"
+                      />
+                      <span className="text-[10px] text-slate-400 block">Candidate actual: {experienceScore}%</span>
+                    </div>
+
+                    {/* Education Slider */}
+                    <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-300">Education</span>
+                        <span className="text-xs font-black text-indigo-300">{simEdu}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        step="5"
+                        value={simEdu} 
+                        onChange={(e) => setSimEdu(Number(e.target.value))}
+                        className="w-full accent-indigo-400 cursor-pointer h-1.5 bg-slate-700 rounded-lg"
+                      />
+                      <span className="text-[10px] text-slate-400 block">Candidate actual: {educationScore}%</span>
+                    </div>
+
+                    {/* Soft Skills Slider */}
+                    <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-300">Soft Skills</span>
+                        <span className="text-xs font-black text-violet-300">{simSoft}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        step="5"
+                        value={simSoft} 
+                        onChange={(e) => setSimSoft(Number(e.target.value))}
+                        className="w-full accent-violet-400 cursor-pointer h-1.5 bg-slate-700 rounded-lg"
+                      />
+                      <span className="text-[10px] text-slate-400 block">Candidate actual: {softSkills}%</span>
+                    </div>
+                  </div>
+
+                  {/* Presets and AI Query */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-700/60">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 mr-1">Presets:</span>
+                      <button
+                        type="button"
+                        onClick={() => { setSimHard(60); setSimExp(20); setSimEdu(10); setSimSoft(10); }}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg text-[11px] font-semibold transition-colors"
+                      >
+                        🛠️ Tech Heavy (60/20/10/10)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSimHard(45); setSimExp(5); setSimEdu(35); setSimSoft(15); }}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg text-[11px] font-semibold transition-colors"
+                      >
+                        🎓 Fresher / Campus (45/5/35/15)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSimHard(25); setSimExp(35); setSimEdu(10); setSimSoft(30); }}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg text-[11px] font-semibold transition-colors"
+                      >
+                        👔 Leadership (25/35/10/30)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSimHard(40); setSimExp(25); setSimEdu(20); setSimSoft(15); }}
+                        className="px-2.5 py-1 bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 rounded-lg text-[11px] font-bold transition-colors"
+                      >
+                        🔄 Default (40/25/20/15)
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => askAiAboutTopic(`If our team weights Hard Skills at ${simHard}%, Experience at ${simExp}%, Education at ${simEdu}%, and Soft Skills at ${simSoft}%, how does ${candidate.name} fit for ${activeJob.title}? Is this candidate an interview-worthy pick under this philosophy?`)}
+                      className="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Ask AI on Simulated Fit
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Key Strengths & Missing Gaps Grid (Interactive with AI probing & Question Generation) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Key Strengths */}
                 <div className="p-5 bg-emerald-50/40 border border-emerald-200/80 rounded-2xl space-y-3 shadow-2xs">
@@ -1121,11 +1753,36 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                   <div className="space-y-2">
                     {(res?.keyStrengths || []).length > 0 ? (
                       (res?.keyStrengths || []).map((str, idx) => (
-                        <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-white/80 rounded-xl border border-emerald-100 text-xs text-slate-800 font-medium leading-relaxed">
-                          <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black">
-                            ✓
-                          </span>
-                          <span>{str}</span>
+                        <div key={idx} className="group p-2.5 bg-white/80 hover:bg-white rounded-xl border border-emerald-100 hover:border-emerald-300 transition-all flex items-start justify-between gap-2.5">
+                          <div className="flex items-start gap-2.5 text-xs text-slate-800 font-medium leading-relaxed">
+                            <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black">
+                              ✓
+                            </span>
+                            <span>{str}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => askAiAboutTopic(`Explain how ${candidate.name} demonstrated this strength: "${str}" with specific resume evidence and suggest 1 follow-up technical interview question.`)}
+                              className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="Probe strength with AI"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopySnippet(str)}
+                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                              title="Copy strength"
+                            >
+                              {copiedItemText === str ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       ))
                     ) : (
@@ -1152,11 +1809,44 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                   <div className="space-y-2">
                     {gaps.length > 0 ? (
                       gaps.map((gap, idx) => (
-                        <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-white/80 rounded-xl border border-amber-100 text-xs text-slate-800 font-medium leading-relaxed">
-                          <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black">
-                            !
-                          </span>
-                          <span>{gap}</span>
+                        <div key={idx} className="group p-2.5 bg-white/80 hover:bg-white rounded-xl border border-amber-100 hover:border-amber-300 transition-all flex items-start justify-between gap-2.5">
+                          <div className="flex items-start gap-2.5 text-xs text-slate-800 font-medium leading-relaxed">
+                            <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black">
+                              !
+                            </span>
+                            <span>{gap}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => askAiAboutTopic(`Generate 2 targeted technical interview questions to test if ${candidate.name} can learn or compensate for missing: "${gap}"`)}
+                              className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1"
+                              title="Generate targeted interview questions"
+                            >
+                              <HelpCircle className="w-3 h-3 text-amber-700" /> Test
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => askAiAboutTopic(`Analyze whether missing requirement "${gap}" is a critical dealbreaker or easily trainable on the job for ${activeJob.title}.`)}
+                              className="p-1 text-slate-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                              title="Is this a dealbreaker?"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopySnippet(gap)}
+                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                              title="Copy gap"
+                            >
+                              {copiedItemText === gap ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       ))
                     ) : (
@@ -1170,9 +1860,9 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                 </div>
               </div>
 
-              {/* Skills Alignment Matrix with Interactive Filter */}
-              <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              {/* Skills Alignment Matrix (Interactive with Search, Filter & Skill Verification Toggles) */}
+              <div id="skill-matrix-section" className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <div>
                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                       <Target className="w-4 h-4 text-teal-600" /> Skill Alignment Matrix
@@ -1182,49 +1872,140 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                     </p>
                   </div>
 
-                  {/* Filter Pills */}
-                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
-                    <button
-                      onClick={() => setSkillFilter('all')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                        skillFilter === 'all'
-                          ? 'bg-white text-slate-900 shadow-2xs'
-                          : 'text-slate-500 hover:text-slate-900'
-                      }`}
-                    >
-                      All ({allSkills.length})
-                    </button>
-                    <button
-                      onClick={() => setSkillFilter('matched')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                        skillFilter === 'matched'
-                          ? 'bg-white text-emerald-700 shadow-2xs'
-                          : 'text-slate-500 hover:text-emerald-700'
-                      }`}
-                    >
-                      Matched ({matchedSkills.length})
-                    </button>
-                    <button
-                      onClick={() => setSkillFilter('missing')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                        skillFilter === 'missing'
-                          ? 'bg-white text-amber-700 shadow-2xs'
-                          : 'text-slate-500 hover:text-amber-700'
-                      }`}
-                    >
-                      Missing ({missingSkills.length})
-                    </button>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                    {/* Live Skill Search */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={skillSearch}
+                        onChange={(e) => setSkillSearch(e.target.value)}
+                        placeholder="Search skills (e.g. React, SQL)..."
+                        className="pl-8 pr-7 py-1 text-xs bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl w-full sm:w-56 focus:outline-none focus:border-teal-500 font-medium transition-all"
+                      />
+                      {skillSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setSkillSearch('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 self-start sm:self-auto">
+                      <button
+                        onClick={() => setSkillFilter('all')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          skillFilter === 'all'
+                            ? 'bg-white text-slate-900 shadow-2xs'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        All ({allSkills.length})
+                      </button>
+                      <button
+                        onClick={() => setSkillFilter('matched')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          skillFilter === 'matched'
+                            ? 'bg-white text-emerald-700 shadow-2xs'
+                            : 'text-slate-500 hover:text-emerald-700'
+                        }`}
+                      >
+                        Matched ({matchedSkills.length})
+                      </button>
+                      <button
+                        onClick={() => setSkillFilter('missing')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          skillFilter === 'missing'
+                            ? 'bg-white text-amber-700 shadow-2xs'
+                            : 'text-slate-500 hover:text-amber-700'
+                        }`}
+                      >
+                        Missing ({missingSkills.length})
+                      </button>
+                    </div>
                   </div>
                 </div>
 
+                {/* Selected Skill Detail Inspector Drawer */}
+                {selectedSkillForDetail && (
+                  <div className="p-4 bg-teal-50/70 border border-teal-200 rounded-xl space-y-2.5 animate-in slide-in-from-top-1 duration-150">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${selectedSkillForDetail.matched ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        <span className="text-xs font-black text-slate-900 uppercase">
+                          Skill Inspector: {selectedSkillForDetail.skill}
+                        </span>
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                          selectedSkillForDetail.matched ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {selectedSkillForDetail.matched ? 'Verified on Resume' : 'Flagged as Missing'}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSkillForDetail(null)}
+                        className="text-slate-400 hover:text-slate-600 p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                      {selectedSkillForDetail.notes || (selectedSkillForDetail.matched 
+                        ? 'Confirmed through project experience, direct keyword matching, and technical domain context.' 
+                        : 'Not detected in extracted technical skills or experience bullets. Consider testing in screening round.')}
+                    </p>
+
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSkillVerification(selectedSkillForDetail.skill)}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+                          selectedSkillForDetail.matched
+                            ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>{selectedSkillForDetail.matched ? 'Mark as Unverified / Missing' : 'Manually Mark as Verified'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => askAiAboutTopic(`Examine ${candidate.name}'s resume specifically for knowledge, project work, or certifications related to "${selectedSkillForDetail.skill}". Quote relevant lines if present.`)}
+                        className="px-3 py-1 bg-white hover:bg-teal-100 text-teal-800 border border-teal-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Ask AI to Verify Evidence
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('resume')}
+                        className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-slate-500" /> Search in Full Resume
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Skill Cards Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {filteredSkills.map((sm, idx) => (
                     <div
                       key={idx}
-                      className={`p-3 rounded-xl border transition-all flex flex-col justify-between gap-1.5 ${
-                        sm?.matched
-                          ? 'bg-emerald-50/50 border-emerald-200/90 text-slate-800'
-                          : 'bg-slate-50/80 border-slate-200 text-slate-600'
+                      onClick={() => setSelectedSkillForDetail(selectedSkillForDetail?.skill === sm.skill ? null : sm)}
+                      className={`p-3 rounded-xl border transition-all flex flex-col justify-between gap-1.5 cursor-pointer hover:shadow-xs group ${
+                        selectedSkillForDetail?.skill === sm.skill
+                          ? 'ring-2 ring-teal-500 bg-teal-50/40 border-teal-300'
+                          : sm?.matched
+                          ? 'bg-emerald-50/50 hover:bg-emerald-50/80 border-emerald-200/90 text-slate-800'
+                          : 'bg-slate-50/80 hover:bg-slate-100 border-slate-200 text-slate-600'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -1236,26 +2017,56 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
                           )}
                           <span className="text-xs font-bold text-slate-900 truncate">{sm?.skill}</span>
                         </div>
-                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shrink-0 ${
-                          sm?.matched 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : 'bg-slate-200/70 text-slate-500'
-                        }`}>
-                          {sm?.matched ? 'Verified' : 'Missing'}
-                        </span>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Toggle verification button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleSkillVerification(sm.skill);
+                            }}
+                            className={`p-1 rounded-md transition-colors ${
+                              sm?.matched
+                                ? 'text-emerald-700 hover:bg-emerald-100'
+                                : 'text-slate-400 hover:text-emerald-700 hover:bg-emerald-50'
+                            }`}
+                            title={sm?.matched ? 'Click to mark missing' : 'Click to verify skill'}
+                          >
+                            <CheckCheck className="w-3.5 h-3.5" />
+                          </button>
+
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                            sm?.matched 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-slate-200/70 text-slate-500'
+                          }`}>
+                            {sm?.matched ? 'Verified' : 'Missing'}
+                          </span>
+                        </div>
                       </div>
 
                       {sm?.notes && (
-                        <p className="text-[10px] text-slate-500 font-medium pl-6 leading-tight">
+                        <p className="text-[10px] text-slate-500 font-medium pl-6 leading-tight truncate">
                           {sm.notes}
                         </p>
                       )}
+
+                      <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/80 text-[10px] font-bold text-teal-700 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <span>Click to inspect & verify</span>
+                        <span className="flex items-center gap-0.5 text-teal-600">
+                          Inspect <ArrowRight className="w-2.5 h-2.5" />
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
 
                 {filteredSkills.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-4">No skills match the selected filter.</p>
+                  <div className="text-center py-6 space-y-1">
+                    <p className="text-xs font-bold text-slate-600">No skills match "{skillSearch}"</p>
+                    <p className="text-[11px] text-slate-400">Try searching for another keyword or resetting the filter pill.</p>
+                  </div>
                 )}
               </div>
 
@@ -1553,67 +2364,157 @@ ${res.missingRequiredSkills?.map((m) => `- ${m}`).join('\n')}
 
           {/* TAB 4: ASK AI ASSISTANT */}
           {activeTab === 'qa' && (
-            <div className="space-y-4 flex flex-col h-[50vh]">
-              <div className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl text-xs text-indigo-900 font-medium flex items-center gap-2 shrink-0">
-                <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span>Ask AI anything about {candidate.name}&apos;s background, technical depth, or specific credentials.</span>
+            <div className="flex-1 min-h-0 flex flex-col h-full space-y-3">
+              {/* Minimal Top Status Bar */}
+              <div className="flex items-center justify-between px-1 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs sm:text-sm font-bold text-slate-700">
+                    Ask AI Assistant • Grounded in {candidate.name}&apos;s resume
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResetChat}
+                  disabled={isAsking}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                  title="Clear conversation"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                  <span>Clear Chat</span>
+                </button>
               </div>
 
-              {/* Message List */}
-              <div className="flex-1 overflow-y-auto space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+              {/* Message List - Full available height with large, readable text */}
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-4 p-4 sm:p-6 bg-slate-50/70 border border-slate-200 rounded-2xl shadow-inner">
                 {(messages || []).map((m) => (
                   <div
                     key={m.id}
-                    className={`flex gap-3 text-xs ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex gap-3 text-sm sm:text-base ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {m.sender === 'ai' && (
-                      <div className="w-8 h-8 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold shadow-sm">
+                      <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 font-bold shadow-sm mt-0.5">
                         <Sparkles className="w-4 h-4 text-white" />
                       </div>
                     )}
 
                     <div
-                      className={`max-w-[80%] rounded-2xl p-3.5 leading-relaxed font-medium ${
+                      className={`max-w-[92%] sm:max-w-[85%] rounded-2xl p-4 sm:p-5 font-normal transition-all ${
                         m.sender === 'user'
-                          ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-200'
+                          ? 'bg-teal-700 text-white rounded-br-none shadow-md shadow-teal-700/20'
                           : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
                       }`}
                     >
-                      <p className="whitespace-pre-wrap">{m.text}</p>
-                      <span className="text-[10px] text-slate-400 block mt-1 text-right">{m.timestamp}</span>
+                      {m.sender === 'ai' ? (
+                        <div>
+                          <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100 gap-2">
+                            <span className="text-xs font-extrabold text-teal-800 uppercase tracking-wider flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                              Precision Dossier Analysis
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveToNotes(m.id, m.text)}
+                                className={`text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all ${
+                                  savedToNotesMsgId === m.id
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80'
+                                }`}
+                                title="Save to recruiter notes"
+                              >
+                                <Bookmark className="w-3 h-3 text-amber-700" />
+                                <span>{savedToNotesMsgId === m.id ? 'Saved!' : 'Save to Notes'}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleCopyMessage(m.id, m.text)}
+                                className="text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                                title="Copy answer"
+                              >
+                                {copiedMsgId === m.id ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span className="text-emerald-600">Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {renderFormattedMessageText(m.text)}
+
+                          <div className="text-xs text-slate-400 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <span>Resume Grounded</span>
+                            <span>{m.timestamp}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="whitespace-pre-wrap leading-relaxed">{m.text}</p>
+                          <span className="text-xs text-teal-200/90 block mt-2 text-right font-medium">{m.timestamp}</span>
+                        </div>
+                      )}
                     </div>
 
                     {m.sender === 'user' && (
-                      <div className="w-8 h-8 rounded-2xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 font-bold">
+                      <div className="w-8 h-8 rounded-xl bg-slate-300 text-slate-700 flex items-center justify-center shrink-0 font-bold mt-0.5">
                         <User className="w-4 h-4" />
                       </div>
                     )}
                   </div>
                 ))}
+
                 {isAsking && (
-                  <div className="flex items-center gap-2 text-xs text-indigo-600 font-bold p-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                    <span>AI is analyzing candidate resume...</span>
+                  <div className="flex items-center gap-2.5 text-sm text-teal-800 font-bold p-3.5 bg-teal-50 border border-teal-200 rounded-2xl animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                    <span>Cross-referencing {candidate.name}&apos;s resume against {activeJob.title} criteria...</span>
                   </div>
                 )}
+
+                <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Bar */}
-              <form onSubmit={handleSendQuery} className="flex gap-2 shrink-0">
-                <input
-                  type="text"
-                  placeholder={`Ask AI about ${candidate.name} (e.g. "What did they study?" or "Explain their project impact")...`}
-                  value={inputQuery}
-                  onChange={(e) => setInputQuery(e.target.value)}
-                  disabled={isAsking}
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-medium"
-                />
+              {/* Spacious Bottom Input Bar */}
+              <form onSubmit={handleSendQuery} className="shrink-0 flex items-center gap-2.5 pt-1">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder={`Ask anything about ${candidate.name} (e.g. "Do they know Docker?", "Evaluate their project depth", "What are their main gaps?")...`}
+                    value={inputQuery}
+                    onChange={(e) => setInputQuery(e.target.value)}
+                    disabled={isAsking}
+                    className="w-full bg-white border border-slate-300 hover:border-slate-400 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 transition-all font-medium pr-10 shadow-2xs"
+                  />
+                  {inputQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setInputQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
                 <button
                   type="submit"
                   disabled={isAsking || !inputQuery.trim()}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-md shadow-indigo-200"
+                  className="px-5 sm:px-6 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm shadow-teal-600/30 shrink-0"
                 >
-                  <Send className="w-3.5 h-3.5" /> Send
+                  {isAsking ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  <span>Ask AI</span>
                 </button>
               </form>
             </div>

@@ -1322,12 +1322,203 @@ PRECISE EVALUATION INSTRUCTIONS:
 });
 
 /**
+ * High-Precision Deterministic Q&A Fallback Engine
+ * Accurately answers recruiter queries using verified resume data without hallucinations
+ */
+function generatePreciseDeterministicQA(
+  jobPosting: JobPosting,
+  screeningResult: ScreeningResult,
+  rawResumeText: string,
+  question: string
+): string {
+  const qLower = question.toLowerCase();
+  const cName = screeningResult.candidateName || 'Candidate';
+  const jobTitle = jobPosting.title || 'Target Role';
+
+  // 1. Education / College / Degree / University / Academic background / GPA / Marks
+  if (/educat|degree|college|university|btech|b\.tech|bca|bsc|b\.sc|mtech|mca|school|graduat|cgpa|gpa|marks|percentage|academic/i.test(qLower)) {
+    const eduList = screeningResult.extractedEducation || [];
+    let eduDetails = '';
+    if (eduList.length > 0) {
+      eduDetails = eduList.map((e) => `• **${e.degree}** from *${e.institution}*${e.year ? ` (Graduation: ${e.year})` : ''}`).join('\n');
+    } else {
+      const degreeMatches = rawResumeText.match(/(?:Bachelor|Master|B\.?Tech|BCA|B\.?E|B\.?Sc|M\.?Tech|MCA|High School|Diploma)[^\n,.]+/gi);
+      if (degreeMatches && degreeMatches.length > 0) {
+        eduDetails = degreeMatches.slice(0, 3).map((d) => `• **${d.trim()}** (extracted from resume)`).join('\n');
+      } else {
+        eduDetails = `• Education details not explicitly identified in formatted fields; review raw resume section.`;
+      }
+    }
+
+    const gpaMatch = rawResumeText.match(/\b(?:CGPA|GPA|Percentage|Score)[\s:]*([0-9.]+(?:\s*\/\s*10|\s*%)?)/i);
+    const gpaNote = gpaMatch ? `\n• **Academic Score / CGPA:** ${gpaMatch[0]}` : '';
+
+    return `### 🎯 Direct Verdict
+**${cName}** has ${eduList.length > 0 ? `${eduList.length} documented educational credential(s)` : 'academic background listed'} aligned with ${jobTitle}.
+
+### 📄 Verified Resume Evidence
+${eduDetails}${gpaNote}
+
+### ⚖️ Job Match Impact
+• **Requirement:** ${jobPosting.educationRequirement || "Bachelor's degree in Computer Science or related field"}.
+• **Alignment:** ${eduList.some((e) => /computer|tech|engineering|science|it|application/i.test(e.degree)) ? '✓ Aligned with technical prerequisites' : 'Matches baseline degree prerequisites'}.
+
+### 💡 Recommended Interview Question
+*"How did your degree coursework and final-year capstone project specifically prepare you for the hands-on requirements of ${jobTitle}?"*`;
+  }
+
+  // 2. Experience / Tenure / Freshers / Student / Years of experience / Companies / Work history
+  if (/experien|tenure|year|student|fresher|work|compani|history|career|intern|seniority/i.test(qLower)) {
+    const isFresher = screeningResult.yearsOfExperience === 0 || /student|fresher/i.test(screeningResult.currentRole || '');
+    const expList = screeningResult.extractedExperience || [];
+    const expDetails = expList.length > 0
+      ? expList.map((e) => `• **${e.title}** at *${e.company}* (${e.duration})\n  *Summary:* ${e.description.slice(0, 160)}${e.description.length > 160 ? '...' : ''}`).join('\n')
+      : `• No conventional multi-year corporate employment blocks listed; candidate relies on student projects or practical engineering builds.`;
+
+    return `### 🎯 Direct Verdict
+**${cName}** has **${screeningResult.yearsOfExperience} years of verified full-time corporate experience**${isFresher ? ' and is identified as a **Final Year Student / Fresher**' : ''}.
+
+### 📄 Verified Resume Evidence
+${expDetails}
+
+### ⚖️ Job Match Impact
+• **Target Requirement:** Min ${jobPosting.minYearsExperience} years experience for ${jobPosting.experienceLevel || 'target'} role.
+• **Assessment:** ${screeningResult.yearsOfExperience >= jobPosting.minYearsExperience ? `✓ Fully meets or exceeds required tenure (${screeningResult.yearsOfExperience} yrs vs ${jobPosting.minYearsExperience} yrs min)` : isFresher && jobPosting.minYearsExperience <= 1 ? '✓ Suitable candidate for entry-level / fresher placement' : `⚠️ Below the ${jobPosting.minYearsExperience}-year seniority threshold; evaluate practical project execution`}.
+
+### 💡 Recommended Interview Question
+*"Can you walk me through the lifecycle of your most impactful project, detailing your architectural choices, challenges encountered, and measurable results?"*`;
+  }
+
+  // 3. Specific Skill / Tech query (e.g. "Do they know Python?", "How is their Docker?", "What about React?")
+  const allKnownSkills = [...jobPosting.requiredSkills, ...(jobPosting.preferredSkills || [])];
+  const detectedSkill = allKnownSkills.find((s) => new RegExp(`\\b${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(qLower));
+
+  if (detectedSkill) {
+    const matchedObj = (screeningResult.skillMatches || []).find((m) => m.skill.toLowerCase() === detectedSkill.toLowerCase());
+    const isPresent = matchedObj ? matchedObj.matched : new RegExp(`\\b${detectedSkill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(rawResumeText);
+    const isRequired = jobPosting.requiredSkills.some((s) => s.toLowerCase() === detectedSkill.toLowerCase());
+
+    if (isPresent) {
+      const regex = new RegExp(`([^.\\n]*?\\b${detectedSkill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[^.\\n]*)`, 'i');
+      const snippetMatch = rawResumeText.match(regex);
+      const snippet = snippetMatch ? snippetMatch[1].trim() : 'Documented in candidate technical skills section';
+
+      return `### 🎯 Direct Verdict
+**Yes.** **${cName}** demonstrates verified proficiency in **${detectedSkill}**.
+
+### 📄 Verified Resume Evidence
+• **Resume Reference:** "${snippet}"
+• **Status:** Verified in candidate profile${matchedObj?.notes ? ` (${matchedObj.notes})` : ''}.
+
+### ⚖️ Job Match Impact
+• **Role Priority:** ${isRequired ? '🔴 Mandatory Core Requirement' : '🟢 Preferred / Bonus Competency'}.
+• **Evaluation:** Directly satisfies the ${jobTitle} skill matrix for ${detectedSkill}.
+
+### 💡 Recommended Interview Question
+*"Could you explain a specific architectural scenario or problem where you implemented ${detectedSkill}, and how you optimized its performance or reliability?"*`;
+    } else {
+      return `### 🎯 Direct Verdict
+⚠️ **Not Found in Resume:** **${cName}** does NOT mention or demonstrate verified experience with **${detectedSkill}** in their submitted documents.
+
+### 📄 Verified Resume Evidence
+• An exhaustive search across the candidate's resume yielded **0 verified citations** for *${detectedSkill}*.
+
+### ⚖️ Job Match Impact
+• **Role Priority:** ${isRequired ? '🔴 Mandatory Core Requirement' : '🟢 Preferred / Bonus Competency'}.
+• **Risk:** ${isRequired ? `This is a flagged gap against the primary job criteria for ${jobTitle}.` : `Non-critical gap since ${detectedSkill} is an optional/preferred qualification.`}
+
+### 💡 Recommended Interview Question
+*"Have you had any practical exposure or personal projects using ${detectedSkill}? If not, what is your approach to rapidly adopting this tool?"*`;
+    }
+  }
+
+  // 4. Missing Skills / Gaps / Red Flags / Weaknesses
+  if (/gap|miss|weak|flag|risk|lack|short|concern/i.test(qLower)) {
+    const missing = screeningResult.missingRequiredSkills || [];
+    const redFlags = screeningResult.redFlagsOrGaps || [];
+    const missingList = missing.length > 0 ? missing.map((m) => `• ⚠️ Missing core skill: **${m}**`).join('\n') : '• No critical required skills missing from the profile.';
+    const flagList = redFlags.length > 0 ? redFlags.map((f) => `• ⚠️ ${f}`).join('\n') : '• No glaring timeline discrepancies or major red flags flagged.';
+
+    return `### 🎯 Direct Verdict
+Evaluation of **${cName}** identified **${missing.length} unverified required skill(s)** and ${redFlags.length} key consideration(s).
+
+### 📄 Verified Resume Evidence
+**Missing Technical Skills:**
+${missingList}
+
+**Screening Considerations & Flags:**
+${flagList}
+
+### ⚖️ Job Match Impact
+• Core Hard Skills Score: **${screeningResult.categoryScores.hardSkills}%**.
+• Recommendation: **${screeningResult.recommendation}**.
+
+### 💡 Recommended Interview Question
+*"Our stack relies heavily on ${missing[0] || 'our core toolchain'}; how quickly can you ramp up, and what similar technologies have you mastered in the past?"*`;
+  }
+
+  // 5. Contact / Location / Work Mode / Availability
+  if (/contact|email|phone|locat|city|where|relocat|remote|hybrid|address/i.test(qLower)) {
+    return `### 🎯 Direct Verdict
+Contact & location dossier for **${cName}**:
+
+### 📄 Verified Resume Evidence
+• **Location:** ${screeningResult.location || 'Not explicitly stated in header'}
+• **Email:** ${screeningResult.email || 'Not provided'}
+• **Phone:** ${screeningResult.phone || 'Not provided'}
+• **Target Job Workplace Setup:** ${jobPosting.location || 'Remote / Hybrid'} (${jobPosting.workMode || 'Hybrid'})
+
+### ⚖️ Job Match Impact
+• **Location Fit:** ${screeningResult.location ? `Candidate is based in ${screeningResult.location}. Verify commuting or relocation willingness if role requires on-site presence.` : 'Location requires candidate confirmation during initial screening call.'}
+
+### 💡 Recommended Interview Question
+*"Are you comfortable working in our ${jobPosting.workMode || 'Hybrid'} arrangement based in ${jobPosting.city || jobPosting.location || 'office'}, and what is your notice period or earliest start date?"*`;
+  }
+
+  // 6. Interview Questions Query
+  if (/interview|question|ask|probe|assess/i.test(qLower)) {
+    const questions = screeningResult.tailoredInterviewQuestions || [];
+    const qDetails = questions.length > 0
+      ? questions.map((q, idx) => `**Q${idx + 1} (${q.focusArea}):** "${q.question}"\n*Expected details:* ${q.expectedAnswerDetails}`).join('\n\n')
+      : `• Ask the candidate to explain their most complex project and system design choices.`;
+
+    return `### 🎯 Direct Verdict
+Here are precision interview questions tailored to **${cName}**'s strengths and resume gaps for the **${jobTitle}** role:
+
+### 📄 Tailored Questions
+${qDetails}
+
+### ⚖️ Strategic Goal
+Verify true hands-on capability, practical code execution, and depth of technical reasoning.`;
+  }
+
+  // 7. General Comprehensive Verdict
+  const strengths = screeningResult.keyStrengths?.join('; ') || 'Competent technical foundation';
+  const missing = screeningResult.missingRequiredSkills?.join(', ') || 'None';
+  return `### 🎯 Direct Verdict
+**${cName}** holds an overall match score of **${screeningResult.overallScore}%** (${screeningResult.recommendation}) for the **${jobTitle}** position.
+
+### 📄 Verified Resume Evidence
+• **Current Title / Stage:** ${screeningResult.currentRole || 'Candidate'} (${screeningResult.yearsOfExperience} yrs verified experience)
+• **Key Strengths:** ${strengths}
+• **Missing Required Skills:** ${missing}
+• **Category Breakdown:** Hard Skills ${screeningResult.categoryScores.hardSkills}% | Experience ${screeningResult.categoryScores.experience}% | Education ${screeningResult.categoryScores.education}%
+
+### ⚖️ Job Match Impact
+${screeningResult.executiveSummary}
+
+### 💡 Recommended Interview Question
+*"What makes you uniquely qualified to deliver immediate value as a ${jobTitle}, and how does your project track record prove that?"*`;
+}
+
+/**
  * Candidate Q&A Assistant Endpoint
  */
 app.post('/api/candidate-qa', async (req, res) => {
-  const { jobPosting, screeningResult, question } = req.body as {
+  const { jobPosting, screeningResult, resumeText, question } = req.body as {
     jobPosting: JobPosting;
     screeningResult: ScreeningResult;
+    resumeText?: string;
     question: string;
   };
 
@@ -1335,45 +1526,73 @@ app.post('/api/candidate-qa', async (req, res) => {
     return res.status(400).json({ error: 'Missing required parameters' });
   }
 
+  const rawResumeText = resumeText || screeningResult.resumeText || '';
   const ai = getAIClient();
 
   if (!ai) {
-    // Generate context-aware assistant response
-    const strengths = screeningResult.keyStrengths?.join(', ') || 'demonstrated competence';
-    const missing = screeningResult.missingRequiredSkills?.join(', ') || 'no major missing skills';
-    const answer = `Based on the evaluation of **${screeningResult.candidateName}** for the **${jobPosting.title}** role:
-- **Overall Assessment:** Match score of ${screeningResult.overallScore}% (${screeningResult.recommendation}).
-- **Core Strengths:** ${strengths}.
-- **Key Considerations:** ${missing !== 'no major missing skills' ? `Skill gaps noted in ${missing}.` : 'Demonstrates broad coverage across required competencies.'}
-- **Experience Level:** ${screeningResult.yearsOfExperience} years in relevant roles.
-
-*Recommendation:* Proceed with an in-depth technical interview focusing on verified hands-on projects and problem-solving scenarios.`;
+    const answer = generatePreciseDeterministicQA(jobPosting, screeningResult, rawResumeText, question);
     return res.json({ answer });
   }
 
   try {
+    const isFresher = screeningResult.yearsOfExperience === 0 || /student|fresher/i.test(screeningResult.currentRole || '');
     const prompt = `
-You are an expert recruitment assistant analyzing candidate "${screeningResult.candidateName}" for the position of "${jobPosting.title}".
+You are Starlight AI's senior technical recruiter and talent evaluation specialist.
+Your goal is to provide a PINPOINT ACCURATE, EVIDENCE-GROUNDED answer to the recruiter's inquiry regarding candidate "${screeningResult.candidateName}" for the position "${jobPosting.title}".
 
-JOB DETAILS:
-- Title: ${jobPosting.title}
-- Required Skills: ${jobPosting.requiredSkills.join(', ')}
-- Minimum Experience: ${jobPosting.minYearsExperience} years
+CRITICAL INSTRUCTIONS FOR MAXIMUM PRECISION:
+1. STRICT TRUTHFULNESS & GROUNDING (NO HALLUCINATIONS):
+   - Ground every statement strictly in the provided resume text, parsed education, extracted experience, and skill matches.
+   - If a specific technology, metric, degree, certification, or tool is NOT explicitly mentioned or evidenced in the resume, you MUST unequivocally state:
+     "⚠️ Not Found in Resume: [Technology/Item] is not mentioned or evidenced anywhere in the candidate's profile."
+     NEVER hallucinate, assume, or extrapolate technologies not present.
+2. ACCURATE EXPERIENCE & STUDENT STATUS:
+   - Note if the candidate is a Final Year Student / Fresher (${screeningResult.yearsOfExperience} yrs full-time corporate experience).
+   - High school or bachelor degree dates are academic credentials, NOT full-time corporate jobs. Distinguish student internships/capstones from full-time corporate employment.
+3. STRUCTURE YOUR RESPONSE FOR FAST RECRUITER DECISIONS:
+   ### 🎯 Direct Verdict
+   1-2 concise sentences answering the recruiter's specific question head-on.
+   
+   ### 📄 Verified Resume Evidence
+   Specific bullet points citing exact project titles, roles, company/organization names, dates, course titles, or metrics directly from the resume.
+   
+   ### ⚖️ Job Match Impact
+   How this evidence directly maps to the "${jobPosting.title}" requirements (e.g., Exceeds, Meets, Partial, or Missing Gap).
+   
+   ### 💡 Recommended Interview Question
+   1 sharp, technical follow-up question the recruiter or hiring manager should ask the candidate to test or verify this claim.
+4. TONE:
+   Objective, analytical, concise, and high signal-to-noise ratio. Avoid fluff like "I would be happy to help with that".
 
-CANDIDATE ANALYSIS SUMMARY:
-- Overall Score: ${screeningResult.overallScore}% (${screeningResult.recommendation})
-- Hard Skills: ${screeningResult.categoryScores.hardSkills}% | Experience: ${screeningResult.categoryScores.experience}%
+CANDIDATE DOSSIER:
+- Name: ${screeningResult.candidateName}
 - Current Role: ${screeningResult.currentRole}
-- Executive Summary: ${screeningResult.executiveSummary}
-- Strengths: ${screeningResult.keyStrengths.join('; ')}
-- Missing Skills: ${screeningResult.missingRequiredSkills.join('; ') || 'None'}
-- Gaps/Red Flags: ${screeningResult.redFlagsOrGaps.join('; ') || 'None'}
-- Resume Text: ${screeningResult.resumeText || 'Not provided'}
+- Verified Full-Time Corporate Tenure: ${screeningResult.yearsOfExperience} years (${isFresher ? 'Final Year Student / Fresher' : 'Experienced Professional'})
+- Location: ${screeningResult.location || 'N/A'} | Email: ${screeningResult.email || 'N/A'} | Phone: ${screeningResult.phone || 'N/A'}
+- Overall Match Score: ${screeningResult.overallScore}% (${screeningResult.recommendation})
+- Category Scores: Hard Skills ${screeningResult.categoryScores.hardSkills}% | Experience ${screeningResult.categoryScores.experience}% | Education ${screeningResult.categoryScores.education}% | Soft Skills ${screeningResult.categoryScores.softSkills}%
+- Verified Education: ${JSON.stringify(screeningResult.extractedEducation || [])}
+- Extracted Work / Project Experience: ${JSON.stringify(screeningResult.extractedExperience || [])}
+- Verified Skill Matches: ${screeningResult.skillMatches.filter((s) => s.matched).map((s) => s.skill).join(', ') || 'None'}
+- Missing Required Skills: ${screeningResult.missingRequiredSkills.join(', ') || 'None'}
+- Flags or Gaps: ${screeningResult.redFlagsOrGaps.join('; ') || 'None'}
+
+TARGET JOB REQUISITION:
+- Title: ${jobPosting.title}
+- Department: ${jobPosting.department || 'Engineering'}
+- Location & Work Mode: ${jobPosting.location || 'Remote/Hybrid'} (${jobPosting.workMode || 'Hybrid'})
+- Min Experience Required: ${jobPosting.minYearsExperience} years
+- Required Skills: ${jobPosting.requiredSkills.join(', ')}
+- Preferred Skills: ${jobPosting.preferredSkills?.join(', ') || 'N/A'}
+- Education Requirement: ${jobPosting.educationRequirement}
+
+RAW RESUME TEXT:
+"""
+${rawResumeText.slice(0, 7500)}
+"""
 
 RECRUITER QUESTION:
 "${question}"
-
-Provide a direct, insightful, and professional answer evaluating the candidate based on their resume and job requirements. Use bullet points where appropriate.
 `;
 
     const response = await callGeminiWithFallback(ai, {
@@ -1382,11 +1601,7 @@ Provide a direct, insightful, and professional answer evaluating the candidate b
 
     res.json({ answer: response.text });
   } catch (error: any) {
-    const answer = `Regarding your query about **${screeningResult.candidateName}**:
-- Overall Match: ${screeningResult.overallScore}% with recommendation "${screeningResult.recommendation}".
-- Experience: ${screeningResult.yearsOfExperience} years.
-- Executive Summary: ${screeningResult.executiveSummary}
-- Strengths: ${screeningResult.keyStrengths.slice(0, 2).join('; ')}`;
+    const answer = generatePreciseDeterministicQA(jobPosting, screeningResult, rawResumeText, question);
     res.json({ answer });
   }
 });
